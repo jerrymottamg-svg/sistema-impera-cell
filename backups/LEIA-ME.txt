@@ -1,0 +1,8 @@
+Esta pasta é destinada aos backups do sistema Impera Cell.
+
+Como fazer backup:
+1. No sistema (impera_cell.html), clique em "⬇ Exportar backup"
+2. Mova o arquivo .json baixado para esta pasta
+3. Mantenha todos os backups com a data no nome (ex: impera_cell_2026-06-28.json)
+
+NUNCA delete os arquivos desta pasta!
