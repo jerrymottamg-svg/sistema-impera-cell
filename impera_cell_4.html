@@ -2165,6 +2165,9 @@
   const DB_KEY = 'imperaCellOS';
 
   function getData() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.ordens));
+    }
     try { return JSON.parse(localStorage.getItem(DB_KEY)) || { ordens: [], nextId: 1 }; }
     catch { return { ordens: [], nextId: 1 }; }
   }
@@ -3118,6 +3121,9 @@
   let prodEditId = null;
 
   function getEstoque() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.estoque));
+    }
     try { return JSON.parse(localStorage.getItem(ESTOQUE_KEY)) || { produtos: [], nextId: 1 }; }
     catch { return { produtos: [], nextId: 1 }; }
   }
@@ -3242,6 +3248,9 @@
   const VENDAS_KEY = 'imperaCellVendas';
 
   function getVendas() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.vendas));
+    }
     try { return JSON.parse(localStorage.getItem(VENDAS_KEY)) || { vendas: [], caixas: {}, nextId: 1 }; }
     catch { return { vendas: [], caixas: {}, nextId: 1 }; }
   }
@@ -3443,6 +3452,9 @@
   const FIN_KEY = 'imperaCellFin';
 
   function getFin() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.financeiro));
+    }
     try { return JSON.parse(localStorage.getItem(FIN_KEY)) || { lancamentos: [], nextId: 1 }; }
     catch { return { lancamentos: [], nextId: 1 }; }
   }
