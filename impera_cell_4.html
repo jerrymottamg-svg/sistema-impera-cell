@@ -525,8 +525,26 @@
       .print-os { position: absolute; top: 0; left: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
     }
   </style>
-</head>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+  // ── Inicializar Supabase ao carregar ──
+  window.addEventListener('DOMContentLoaded', async () => {
+    await _initSupabase();
+    // Renderizar a página atual
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
+  });
+</script>
+  </head>
 <body>
+  <!-- Loading overlay durante inicialização -->
+  <div id="appLoading" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+    <div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <span style="color:var(--text-muted);font-size:14px" id="loadingMsg">Conectando ao servidor...</span>
+  </div>
+  <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
@@ -1448,6 +1466,514 @@
 <div class="print-os" id="printArea"></div>
 
 <script>
+
+  // ══════════════════════════════════════════════════════════
+  // ── SUPABASE — Camada de Persistência na Nuvem ──
+  // ══════════════════════════════════════════════════════════
+
+  // ⚠️ CONFIGURAÇÃO: Preencha com seus dados do Supabase
+  const SUPABASE_URL  = 'https://egrrknwvdbkrnstaacmo.supabase.co';   // Ex: https://abc123.supabase.co
+  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVncnJrbnd2ZGJrcm5zdGFhY21vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTAwMjksImV4cCI6MjA5ODY2NjAyOX0.W6MNhF4P_bPxWop15cxMPr0_zdqCzSj954HM8S4-LqM'; // Sua anon/public key
+
+  // Inicializar cliente Supabase
+  const _supabase = (typeof supabase !== 'undefined' && SUPABASE_URL !== 'SUA_URL_AQUI')
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
+
+  const _useSupabase = !!_supabase;
+
+  // Cache em memória — todas as leituras são síncronas a partir daqui
+  const _cache = {
+    ordens:       { ordens: [], nextId: 1 },
+    financeiro:   { lancamentos: [], nextId: 1 },
+    vendas:       { vendas: [], caixas: {}, nextId: 1 },
+    estoque:      { produtos: [], nextId: 1 },
+    precos:       {},
+    modelos:      {},
+    renomes:      {},
+    _loaded:      false,
+  };
+
+  // ── Helpers para sync com Supabase ──
+  async function _sbFetch(table) {
+    if (!_supabase) return [];
+    const { data, error } = await _supabase.from(table).select('*');
+    if (error) { console.error('Supabase fetch error (' + table + '):', error); return []; }
+    return data || [];
+  }
+
+  async function _sbUpsert(table, rows) {
+    if (!_supabase || !rows || rows.length === 0) return;
+    const { error } = await _supabase.from(table).upsert(rows, { onConflict: 'id' });
+    if (error) console.error('Supabase upsert error (' + table + '):', error);
+  }
+
+  async function _sbUpsertByKey(table, key, rows) {
+    if (!_supabase || !rows || rows.length === 0) return;
+    const { error } = await _supabase.from(table).upsert(rows, { onConflict: key });
+    if (error) console.error('Supabase upsert error (' + table + '):', error);
+  }
+
+  async function _sbDelete(table, id) {
+    if (!_supabase) return;
+    const { error } = await _supabase.from(table).delete().eq('id', id);
+    if (error) console.error('Supabase delete error (' + table + '):', error);
+  }
+
+  async function _sbDeleteAll(table) {
+    if (!_supabase) return;
+    const { error } = await _supabase.from(table).delete().neq('id', -999);
+    if (error) console.error('Supabase deleteAll error (' + table + '):', error);
+  }
+
+  async function _sbGetSeq(nome) {
+    if (!_supabase) return 1;
+    const { data } = await _supabase.from('sequencias').select('valor').eq('nome', nome).single();
+    return data ? data.valor : 1;
+  }
+
+  async function _sbSetSeq(nome, valor) {
+    if (!_supabase) return;
+    await _supabase.from('sequencias').upsert({ nome, valor }, { onConflict: 'nome' });
+  }
+
+  async function _sbGetConfig(chave) {
+    if (!_supabase) return null;
+    const { data } = await _supabase.from('configuracoes').select('valor').eq('chave', chave).single();
+    return data ? data.valor : null;
+  }
+
+  async function _sbSetConfig(chave, valor) {
+    if (!_supabase) return;
+    await _supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' });
+  }
+
+  // ── Converter OS do formato app para formato Supabase ──
+  function _osToRow(os) {
+    return {
+      id: os.id,
+      data_entrada: os.dataEntrada || '',
+      nome_cliente: os.nomeCliente || '',
+      telefone: os.telefone || '',
+      cpf: os.cpf || '',
+      rg: os.rg || '',
+      endereco: os.endereco || '',
+      bairro: os.bairro || '',
+      cidade: os.cidade || '',
+      email: os.email || '',
+      tecnico: os.tecnico || '',
+      marca: os.marca || '',
+      modelo_aparelho: os.modeloAparelho || '',
+      imei: os.imei || '',
+      imei2: os.imei2 || '',
+      cor: os.cor || '',
+      acessorios: os.acessorios || '',
+      senha: os.senha || '',
+      senha_tipo: os.senhaTipo || '',
+      senha_seq: os.senhaSeq || [],
+      tipo_manutencao: os.tipoManutencao || '',
+      defeito_relatado: os.defeitoRelatado || '',
+      servico_realizado: os.servicoRealizado || '',
+      observacoes: os.observacoes || '',
+      valor_servico: parseFloat(os.valorServico) || 0,
+      custo_servico: parseFloat(os.custoServico) || 0,
+      status: os.status || 'Aguardando',
+      pago: !!os.pago,
+      forma_pagamento: os.formaPagamento || '',
+      data_pagamento: os.dataPagamento || '',
+      valor_pago: parseFloat(os.valorPago) || 0,
+      estetica: os.estetica || {},
+      defeitos: os.defeitos || {},
+      checklist: os.checklist || {},
+      historico: os.historico || [],
+      dados_extras: _osExtras(os),
+    };
+  }
+
+  function _osExtras(os) {
+    const known = ['id','dataEntrada','nomeCliente','telefone','cpf','rg','endereco','bairro','cidade','email','tecnico','marca','modeloAparelho','imei','imei2','cor','acessorios','senha','senhaTipo','senhaSeq','tipoManutencao','defeitoRelatado','servicoRealizado','observacoes','valorServico','custoServico','status','pago','formaPagamento','dataPagamento','valorPago','estetica','defeitos','checklist','historico'];
+    const extras = {};
+    for (const k of Object.keys(os)) {
+      if (!known.includes(k)) extras[k] = os[k];
+    }
+    return extras;
+  }
+
+  function _rowToOs(row) {
+    const os = {
+      id: row.id,
+      dataEntrada: row.data_entrada || '',
+      nomeCliente: row.nome_cliente || '',
+      telefone: row.telefone || '',
+      cpf: row.cpf || '',
+      rg: row.rg || '',
+      endereco: row.endereco || '',
+      bairro: row.bairro || '',
+      cidade: row.cidade || '',
+      email: row.email || '',
+      tecnico: row.tecnico || '',
+      marca: row.marca || '',
+      modeloAparelho: row.modelo_aparelho || '',
+      imei: row.imei || '',
+      imei2: row.imei2 || '',
+      cor: row.cor || '',
+      acessorios: row.acessorios || '',
+      senha: row.senha || '',
+      senhaTipo: row.senha_tipo || '',
+      senhaSeq: row.senha_seq || [],
+      tipoManutencao: row.tipo_manutencao || '',
+      defeitoRelatado: row.defeito_relatado || '',
+      servicoRealizado: row.servico_realizado || '',
+      observacoes: row.observacoes || '',
+      valorServico: row.valor_servico || 0,
+      custoServico: row.custo_servico || 0,
+      status: row.status || 'Aguardando',
+      pago: !!row.pago,
+      formaPagamento: row.forma_pagamento || '',
+      dataPagamento: row.data_pagamento || '',
+      valorPago: row.valor_pago || 0,
+      estetica: row.estetica || {},
+      defeitos: row.defeitos || {},
+      checklist: row.checklist || {},
+      historico: row.historico || [],
+    };
+    // Restaurar campos extras
+    if (row.dados_extras && typeof row.dados_extras === 'object') {
+      Object.assign(os, row.dados_extras);
+    }
+    return os;
+  }
+
+  // ── Converter Lançamento ──
+  function _lancToRow(l) {
+    return {
+      id: l.id,
+      data: l.data || '',
+      descricao: l.desc || '',
+      categoria: l.categoria || '',
+      tipo: l.tipo || 'entrada',
+      valor: parseFloat(l.valor) || 0,
+      custo: parseFloat(l.custo) || 0,
+      forma_pagamento: l.formaPagamento || '',
+      os_id: l.osId || null,
+      automatico: !!l.automatico,
+    };
+  }
+
+  function _rowToLanc(row) {
+    return {
+      id: row.id,
+      data: row.data || '',
+      desc: row.descricao || '',
+      categoria: row.categoria || '',
+      tipo: row.tipo || 'entrada',
+      valor: parseFloat(row.valor) || 0,
+      custo: parseFloat(row.custo) || 0,
+      formaPagamento: row.forma_pagamento || '',
+      osId: row.os_id || null,
+      automatico: !!row.automatico,
+    };
+  }
+
+  // ── Converter Venda ──
+  function _vendaToRow(v) {
+    return {
+      id: v.id,
+      data: v.data || '',
+      hora: v.hora || '',
+      descricao: v.descricao || '',
+      preco: parseFloat(v.preco) || 0,
+      quantidade: parseInt(v.quantidade) || 1,
+      total: parseFloat(v.total) || 0,
+      forma_pagamento: v.formaPagamento || '',
+    };
+  }
+
+  function _rowToVenda(row) {
+    return {
+      id: row.id,
+      data: row.data || '',
+      hora: row.hora || '',
+      descricao: row.descricao || '',
+      preco: parseFloat(row.preco) || 0,
+      quantidade: parseInt(row.quantidade) || 1,
+      total: parseFloat(row.total) || 0,
+      formaPagamento: row.forma_pagamento || '',
+    };
+  }
+
+  // ── Converter Produto ──
+  function _prodToRow(p) {
+    return {
+      id: p.id,
+      nome: p.nome || '',
+      categoria: p.categoria || '',
+      qtd: parseFloat(p.qtd) || 0,
+      minimo: parseFloat(p.min) || 0,
+      custo: parseFloat(p.custo) || 0,
+      observacoes: p.obs || '',
+    };
+  }
+
+  function _rowToProd(row) {
+    return {
+      id: row.id,
+      nome: row.nome || '',
+      categoria: row.categoria || '',
+      qtd: parseFloat(row.qtd) || 0,
+      min: parseFloat(row.minimo) || 0,
+      custo: parseFloat(row.custo) || 0,
+      obs: row.observacoes || '',
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ── INICIALIZAÇÃO — Carregar dados do Supabase ──
+  // ══════════════════════════════════════════════════════════
+
+  async function _initSupabase() {
+    if (!_useSupabase) {
+      console.log('⚠️ Supabase não configurado — usando localStorage');
+      document.getElementById('appLoading').style.display = 'none';
+      return;
+    }
+
+    try {
+      document.getElementById('loadingMsg').textContent = 'Carregando dados...';
+
+      // Verificar se há dados no localStorage para migrar
+      const hasLocalData = localStorage.getItem('imperaCellOS') ||
+                          localStorage.getItem('imperaCellFin') ||
+                          localStorage.getItem('imperaCellVendas') ||
+                          localStorage.getItem('imperaCellEstoque');
+
+      // Carregar do Supabase em paralelo
+      const [ordensRows, lancRows, vendasRows, caixasRows, estoqueRows, seqOrdens, seqLanc, seqVendas, seqEstoque, precosConf, modelosConf, renomesConf] = await Promise.all([
+        _sbFetch('ordens'),
+        _sbFetch('lancamentos'),
+        _sbFetch('vendas'),
+        _sbFetch('caixas'),
+        _sbFetch('estoque'),
+        _sbGetSeq('ordens'),
+        _sbGetSeq('lancamentos'),
+        _sbGetSeq('vendas'),
+        _sbGetSeq('estoque'),
+        _sbGetConfig('precos'),
+        _sbGetConfig('modelos'),
+        _sbGetConfig('renomes'),
+      ]);
+
+      const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
+
+      // Se Supabase está vazio e localStorage tem dados → migrar
+      if (!supabaseHasData && hasLocalData) {
+        document.getElementById('loadingMsg').textContent = 'Migrando dados para a nuvem...';
+        await _migrateToSupabase();
+        return; // _migrateToSupabase já inicializa o cache
+      }
+
+      // Popular cache com dados do Supabase
+      _cache.ordens = {
+        ordens: ordensRows.map(_rowToOs),
+        nextId: seqOrdens,
+      };
+      _cache.financeiro = {
+        lancamentos: lancRows.map(_rowToLanc),
+        nextId: seqLanc,
+      };
+      const caixasObj = {};
+      caixasRows.forEach(c => { caixasObj[c.data] = c.dados || {}; caixasObj[c.data].caixaInicial = c.caixa_inicial; });
+      _cache.vendas = {
+        vendas: vendasRows.map(_rowToVenda),
+        caixas: caixasObj,
+        nextId: seqVendas,
+      };
+      _cache.estoque = {
+        produtos: estoqueRows.map(_rowToProd),
+        nextId: seqEstoque,
+      };
+      _cache.precos = precosConf || {};
+      _cache.modelos = modelosConf || {};
+      _cache.renomes = renomesConf || {};
+      _cache._loaded = true;
+
+      console.log('✅ Dados carregados do Supabase:', {
+        ordens: _cache.ordens.ordens.length,
+        lancamentos: _cache.financeiro.lancamentos.length,
+        vendas: _cache.vendas.vendas.length,
+        estoque: _cache.estoque.produtos.length,
+      });
+
+    } catch (err) {
+      console.error('Erro ao carregar Supabase:', err);
+      console.log('⚠️ Fallback para localStorage');
+    }
+
+    document.getElementById('appLoading').style.display = 'none';
+  }
+
+  // ── Migração do localStorage para Supabase ──
+  async function _migrateToSupabase() {
+    console.log('🔄 Iniciando migração localStorage → Supabase...');
+
+    try {
+      // OS
+      const localData = JSON.parse(localStorage.getItem(DB_KEY) || '{"ordens":[],"nextId":1}');
+      if (localData.ordens.length > 0) {
+        const rows = localData.ordens.map(_osToRow);
+        // Inserir em lotes de 50
+        for (let i = 0; i < rows.length; i += 50) {
+          await _sbUpsert('ordens', rows.slice(i, i + 50));
+        }
+        await _sbSetSeq('ordens', localData.nextId);
+      }
+
+      // Financeiro
+      const localFin = JSON.parse(localStorage.getItem(FIN_KEY) || '{"lancamentos":[],"nextId":1}');
+      if (localFin.lancamentos.length > 0) {
+        const rows = localFin.lancamentos.map(_lancToRow);
+        for (let i = 0; i < rows.length; i += 50) {
+          await _sbUpsert('lancamentos', rows.slice(i, i + 50));
+        }
+        await _sbSetSeq('lancamentos', localFin.nextId);
+      }
+
+      // Vendas
+      const localVendas = JSON.parse(localStorage.getItem(VENDAS_KEY) || '{"vendas":[],"caixas":{},"nextId":1}');
+      if (localVendas.vendas.length > 0) {
+        const rows = localVendas.vendas.map(_vendaToRow);
+        for (let i = 0; i < rows.length; i += 50) {
+          await _sbUpsert('vendas', rows.slice(i, i + 50));
+        }
+        await _sbSetSeq('vendas', localVendas.nextId);
+      }
+      // Caixas
+      if (localVendas.caixas && Object.keys(localVendas.caixas).length > 0) {
+        const caixaRows = Object.entries(localVendas.caixas).map(([data, val]) => ({
+          data,
+          caixa_inicial: val.caixaInicial || 0,
+          dados: val,
+        }));
+        await _sbUpsertByKey('caixas', 'data', caixaRows);
+      }
+
+      // Estoque
+      const localEstoque = JSON.parse(localStorage.getItem(ESTOQUE_KEY) || '{"produtos":[],"nextId":1}');
+      if (localEstoque.produtos.length > 0) {
+        const rows = localEstoque.produtos.map(_prodToRow);
+        for (let i = 0; i < rows.length; i += 50) {
+          await _sbUpsert('estoque', rows.slice(i, i + 50));
+        }
+        await _sbSetSeq('estoque', localEstoque.nextId);
+      }
+
+      // Preços
+      const localPrecos = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.precos)) : JSON.parse(localStorage.getItem('imperaCellPrecos') || '{}'));
+      if (Object.keys(localPrecos).length > 0) {
+        await _sbSetConfig('precos', localPrecos);
+      }
+
+      // Modelos
+      const localModelos = JSON.parse(localStorage.getItem('imperaCellModelos') || '{}');
+      if (Object.keys(localModelos).length > 0) {
+        await _sbSetConfig('modelos', localModelos);
+      }
+
+      // Renomes
+      const localRenomes = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.renomes)) : JSON.parse(localStorage.getItem('imperaCellRenomesModelo') || '{}'));
+      if (Object.keys(localRenomes).length > 0) {
+        await _sbSetConfig('renomes', localRenomes);
+      }
+
+      console.log('✅ Migração concluída!');
+
+      // Recarregar do Supabase para garantir consistência
+      _cache._loaded = false;
+      await _initSupabase();
+
+    } catch (err) {
+      console.error('Erro na migração:', err);
+      alert('Erro ao migrar dados para a nuvem. Os dados locais foram mantidos. Verifique o console (F12).');
+      document.getElementById('appLoading').style.display = 'none';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ── SYNC HELPERS — Salvar alterações no Supabase em background ──
+  // ══════════════════════════════════════════════════════════
+
+  function _syncOrdens(data) {
+    if (!_useSupabase) return;
+    // Sync completo — upsert todas as OS
+    const rows = data.ordens.map(_osToRow);
+    _sbUpsert('ordens', rows).catch(e => console.error('Sync ordens error:', e));
+    _sbSetSeq('ordens', data.nextId).catch(e => console.error('Sync seq ordens error:', e));
+  }
+
+  function _syncOrdensOne(os) {
+    if (!_useSupabase) return;
+    _sbUpsert('ordens', [_osToRow(os)]).catch(e => console.error('Sync OS error:', e));
+  }
+
+  function _syncDeleteOrdem(id) {
+    if (!_useSupabase) return;
+    _sbDelete('ordens', id).catch(e => console.error('Sync delete OS error:', e));
+  }
+
+  function _syncFinanceiro(data) {
+    if (!_useSupabase) return;
+    const rows = data.lancamentos.map(_lancToRow);
+    // Deletar tudo e reinserir (para refletir exclusões)
+    _sbDeleteAll('lancamentos').then(() => {
+      if (rows.length > 0) {
+        for (let i = 0; i < rows.length; i += 50) {
+          _sbUpsert('lancamentos', rows.slice(i, i + 50));
+        }
+      }
+    }).catch(e => console.error('Sync financeiro error:', e));
+    _sbSetSeq('lancamentos', data.nextId).catch(e => console.error('Sync seq lanc error:', e));
+  }
+
+  function _syncVendas(data) {
+    if (!_useSupabase) return;
+    const rows = data.vendas.map(_vendaToRow);
+    _sbDeleteAll('vendas').then(() => {
+      if (rows.length > 0) {
+        for (let i = 0; i < rows.length; i += 50) {
+          _sbUpsert('vendas', rows.slice(i, i + 50));
+        }
+      }
+    }).catch(e => console.error('Sync vendas error:', e));
+    // Caixas
+    if (data.caixas) {
+      const caixaRows = Object.entries(data.caixas).map(([dt, val]) => ({
+        data: dt,
+        caixa_inicial: val.caixaInicial || 0,
+        dados: val,
+      }));
+      if (caixaRows.length > 0) _sbUpsertByKey('caixas', 'data', caixaRows);
+    }
+    _sbSetSeq('vendas', data.nextId).catch(e => console.error('Sync seq vendas error:', e));
+  }
+
+  function _syncEstoque(data) {
+    if (!_useSupabase) return;
+    const rows = data.produtos.map(_prodToRow);
+    _sbDeleteAll('estoque').then(() => {
+      if (rows.length > 0) {
+        for (let i = 0; i < rows.length; i += 50) {
+          _sbUpsert('estoque', rows.slice(i, i + 50));
+        }
+      }
+    }).catch(e => console.error('Sync estoque error:', e));
+    _sbSetSeq('estoque', data.nextId).catch(e => console.error('Sync seq estoque error:', e));
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ── FIM DA CAMADA SUPABASE ──
+  // ══════════════════════════════════════════════════════════
+
+
   // ── Modelos base (atualizados até 2026) ──
   const MODELOS_BASE = {
     'Samsung': [
@@ -1543,6 +2069,7 @@
   // ── Modelos customizados (salvos pelo usuário) ──
   const CUSTOM_KEY = 'imperaCellModelos';
   function getCustomModelos() {
+    if (_useSupabase && _cache._loaded) return JSON.parse(JSON.stringify(_cache.modelos));
     try { return JSON.parse(localStorage.getItem(CUSTOM_KEY)) || {}; }
     catch { return {}; }
   }
@@ -1551,6 +2078,7 @@
     if (!d[marca]) d[marca] = [];
     if (!d[marca].includes(modelo)) d[marca].push(modelo);
     localStorage.setItem(CUSTOM_KEY, JSON.stringify(d));
+    if (_useSupabase && _cache._loaded) { _cache.modelos = JSON.parse(JSON.stringify(d)); _sbSetConfig('modelos', d); }
   }
   function getMarcas() {
     const custom = getCustomModelos();
@@ -1642,12 +2170,19 @@
   const DB_KEY = 'imperaCellOS';
 
   function getData() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.ordens)); // deep copy
+    }
     try { return JSON.parse(localStorage.getItem(DB_KEY)) || { ordens: [], nextId: 1 }; }
     catch { return { ordens: [], nextId: 1 }; }
   }
 
   function saveData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+    if (_useSupabase && _cache._loaded) {
+      _cache.ordens = JSON.parse(JSON.stringify(data));
+      _syncOrdens(data);
+    }
     atualizarBackupInfo();
   }
 
@@ -2591,10 +3126,19 @@
   let prodEditId = null;
 
   function getEstoque() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.estoque));
+    }
     try { return JSON.parse(localStorage.getItem(ESTOQUE_KEY)) || { produtos: [], nextId: 1 }; }
     catch { return { produtos: [], nextId: 1 }; }
   }
-  function saveEstoque(d) { localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d)); }
+  function saveEstoque(d) {
+    localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d));
+    if (_useSupabase && _cache._loaded) {
+      _cache.estoque = JSON.parse(JSON.stringify(d));
+      _syncEstoque(d);
+    }
+  }
 
   function abrirModalProduto(id) {
     prodEditId = id || null;
@@ -2709,10 +3253,19 @@
   const VENDAS_KEY = 'imperaCellVendas';
 
   function getVendas() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.vendas));
+    }
     try { return JSON.parse(localStorage.getItem(VENDAS_KEY)) || { vendas: [], caixas: {}, nextId: 1 }; }
     catch { return { vendas: [], caixas: {}, nextId: 1 }; }
   }
-  function saveVendas(d) { localStorage.setItem(VENDAS_KEY, JSON.stringify(d)); }
+  function saveVendas(d) {
+    localStorage.setItem(VENDAS_KEY, JSON.stringify(d));
+    if (_useSupabase && _cache._loaded) {
+      _cache.vendas = JSON.parse(JSON.stringify(d));
+      _syncVendas(d);
+    }
+  }
 
   function prefillVendasData() {
     const inp = document.getElementById('vendasData');
@@ -2904,10 +3457,19 @@
   const FIN_KEY = 'imperaCellFin';
 
   function getFin() {
+    if (_useSupabase && _cache._loaded) {
+      return JSON.parse(JSON.stringify(_cache.financeiro));
+    }
     try { return JSON.parse(localStorage.getItem(FIN_KEY)) || { lancamentos: [], nextId: 1 }; }
     catch { return { lancamentos: [], nextId: 1 }; }
   }
-  function saveFin(d) { localStorage.setItem(FIN_KEY, JSON.stringify(d)); }
+  function saveFin(d) {
+    localStorage.setItem(FIN_KEY, JSON.stringify(d));
+    if (_useSupabase && _cache._loaded) {
+      _cache.financeiro = JSON.parse(JSON.stringify(d));
+      _syncFinanceiro(d);
+    }
+  }
 
   function toggleFinCustoVisibility() {
     const tipo = document.getElementById('finTipo').value;
