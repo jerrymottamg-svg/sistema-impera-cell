@@ -2190,13 +2190,28 @@
   }
 
   function exportarJSON() {
-    const data = getData();
-    const json = JSON.stringify(data, null, 2);
+    let backupData;
+    if (_useSupabase && _cache._loaded) {
+      backupData = {
+        ordens: JSON.parse(JSON.stringify(_cache.ordens)),
+        financeiro: JSON.parse(JSON.stringify(_cache.financeiro)),
+        vendas: JSON.parse(JSON.stringify(_cache.vendas)),
+        estoque: JSON.parse(JSON.stringify(_cache.estoque)),
+        precos: JSON.parse(JSON.stringify(_cache.precos)),
+        modelos: JSON.parse(JSON.stringify(_cache.modelos)),
+        renomes: JSON.parse(JSON.stringify(_cache.renomes)),
+        version: 'supabase_v1'
+      };
+    } else {
+      backupData = getData(); // fallback legado
+    }
+    
+    const json = JSON.stringify(backupData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     const dt   = new Date();
-    const nome = 'impera_cell_' +
+    const nome = 'impera_cell_supabase_' +
       dt.getFullYear() + '-' +
       String(dt.getMonth()+1).padStart(2,'0') + '-' +
       String(dt.getDate()).padStart(2,'0') + '.json';
@@ -2204,27 +2219,141 @@
     a.download = nome;
     a.click();
     URL.revokeObjectURL(url);
-    toast('✅ Backup exportado: ' + nome + ' — salve em C:\\Users\\teste\\Documents\\Nova pasta\\Impera Cell\\backups\\');
+    toast('✅ Backup completo exportado da nuvem!');
   }
 
-  function importarJSON(event) {
+  async function importarJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.ordens || !Array.isArray(data.ordens)) {
+        
+        // Verificar se é formato novo ou antigo (legado)
+        const isNewFormat = data.version === 'supabase_v1';
+        const hasOrdens = isNewFormat ? (data.ordens && Array.isArray(data.ordens.ordens)) : (data.ordens && Array.isArray(data.ordens));
+        
+        if (!hasOrdens) {
           toast('Arquivo inválido. Selecione um backup gerado pelo sistema.', true);
           return;
         }
-        if (!confirm('Isso vai SUBSTITUIR todos os dados atuais pelos do backup. Continuar?')) return;
-        saveData(data);
-        toast('✅ Backup importado com sucesso! ' + data.ordens.length + ' OS carregadas.');
-        renderDashboard();
-        atualizarBackupInfo();
-      } catch(err) {
-        toast('Erro ao ler o arquivo JSON.', true);
+        
+        if (!confirm('Isso vai SUBSTITUIR todos os dados atuais na nuvem (Supabase) pelos do backup. Continuar?')) return;
+        
+        const msgEl = document.getElementById('loadingMsg');
+        const loader = document.getElementById('appLoading');
+        if (loader) {
+          if (msgEl) msgEl.textContent = 'Importando backup para a nuvem...';
+          loader.style.display = 'flex';
+        }
+        
+        if (isNewFormat) {
+          if (_useSupabase) {
+            // Sincronizar Ordens
+            _cache.ordens = data.ordens;
+            const ordensRows = _cache.ordens.ordens.map(_osToRow);
+            await _sbDeleteAll('ordens');
+            if (ordensRows.length > 0) {
+              for (let i = 0; i < ordensRows.length; i += 50) {
+                await _sbUpsert('ordens', ordensRows.slice(i, i + 50));
+              }
+            }
+            await _sbSetSeq('ordens', _cache.ordens.nextId);
+            
+            // Sincronizar Financeiro
+            _cache.financeiro = data.financeiro;
+            const lancRows = _cache.financeiro.lancamentos.map(_lancToRow);
+            await _sbDeleteAll('lancamentos');
+            if (lancRows.length > 0) {
+              for (let i = 0; i < lancRows.length; i += 50) {
+                await _sbUpsert('lancamentos', lancRows.slice(i, i + 50));
+              }
+            }
+            await _sbSetSeq('lancamentos', _cache.financeiro.nextId);
+            
+            // Sincronizar Vendas
+            _cache.vendas = data.vendas;
+            const vendasRows = _cache.vendas.vendas.map(_vendaToRow);
+            await _sbDeleteAll('vendas');
+            if (vendasRows.length > 0) {
+              for (let i = 0; i < vendasRows.slice(i, i + 50); i += 50) {
+                await _sbUpsert('vendas', vendasRows.slice(i, i + 50));
+              }
+            }
+            if (_cache.vendas.caixas) {
+              await _sbDeleteAll('caixas');
+              const caixaRows = Object.entries(_cache.vendas.caixas).map(([dt, val]) => ({
+                data: dt,
+                caixa_inicial: val.caixaInicial || 0,
+                dados: val,
+              }));
+              if (caixaRows.length > 0) await _sbUpsertByKey('caixas', 'data', caixaRows);
+            }
+            await _sbSetSeq('vendas', _cache.vendas.nextId);
+            
+            // Sincronizar Estoque
+            _cache.estoque = data.estoque;
+            const prodRows = _cache.estoque.produtos.map(_prodToRow);
+            await _sbDeleteAll('estoque');
+            if (prodRows.length > 0) {
+              for (let i = 0; i < prodRows.length; i += 50) {
+                await _sbUpsert('estoque', prodRows.slice(i, i + 50));
+              }
+            }
+            await _sbSetSeq('estoque', _cache.estoque.nextId);
+            
+            // Configurações
+            _cache.precos = data.precos || {};
+            _cache.modelos = data.modelos || {};
+            _cache.renomes = data.renomes || {};
+            await _sbSetConfig('precos', _cache.precos);
+            await _sbSetConfig('modelos', _cache.modelos);
+            await _sbSetConfig('renomes', _cache.renomes);
+          } else {
+            // Local fallback
+            localStorage.setItem(DB_KEY, JSON.stringify(data.ordens));
+            localStorage.setItem(FIN_KEY, JSON.stringify(data.financeiro));
+            localStorage.setItem(VENDAS_KEY, JSON.stringify(data.vendas));
+            localStorage.setItem(ESTOQUE_KEY, JSON.stringify(data.estoque));
+            localStorage.setItem('imperaCellPrecos', JSON.stringify(data.precos));
+            localStorage.setItem('imperaCellModelos', JSON.stringify(data.modelos));
+            localStorage.setItem('imperaCellRenomesModelo', JSON.stringify(data.renomes));
+          }
+          toast('✅ Backup completo importado com sucesso!');
+        } else {
+          // Formato legado
+          if (_useSupabase) {
+            _cache.ordens = data;
+            const ordensRows = data.ordens.map(_osToRow);
+            await _sbDeleteAll('ordens');
+            if (ordensRows.length > 0) {
+              for (let i = 0; i < ordensRows.length; i += 50) {
+                await _sbUpsert('ordens', ordensRows.slice(i, i + 50));
+              }
+            }
+            await _sbSetSeq('ordens', data.nextId);
+          } else {
+            saveData(data);
+          }
+          toast('✅ Backup legado (apenas OS) importado com sucesso!');
+        }
+        
+        if (loader) loader.style.display = 'none';
+        
+        // Forçar renderização de todas as telas
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderListaOS === 'function') renderListaOS();
+        if (typeof renderFinanceiro === 'function') renderFinanceiro();
+        if (typeof renderEstoque === 'function') renderEstoque();
+        if (typeof renderVendas === 'function') renderVendas();
+        if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
+        
+      } catch (err) {
+        console.error(err);
+        const loader = document.getElementById('appLoading');
+        if (loader) loader.style.display = 'none';
+        toast('Erro ao processar o arquivo JSON de backup.', true);
       }
     };
     reader.readAsText(file);
