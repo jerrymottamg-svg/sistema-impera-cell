@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -302,6 +302,7 @@
     }
 
     .badge-aguardando  { background: #2a2010; color: var(--gold); border: 1px solid var(--gold-dim); }
+    .badge-peca        { background: #1e102e; color: #c084fc; border: 1px solid #7c3aed; }
     .badge-andamento   { background: #0d1f3c; color: var(--accent); border: 1px solid var(--accent); }
     .badge-concluido   { background: #0d2b1f; color: var(--success); border: 1px solid var(--success); }
     .badge-entregue    { background: #1a1a1a; color: var(--text-muted); border: 1px solid var(--border); }
@@ -544,6 +545,7 @@
 <!-- NAV -->
 <nav>
   <div class="tab active" onclick="showPage('dashboard')">📊 Dashboard</div>
+  <div class="tab" onclick="showPage('vendas')">🛒 Vendas</div>
   <div class="tab" onclick="showPage('nova-os')">➕ Nova OS</div>
   <div class="tab" onclick="showPage('lista-os')">📋 Ordens de Serviço</div>
   <div class="tab" onclick="showPage('clientes')">👤 Clientes</div>
@@ -613,11 +615,52 @@
     </div>
   </div>
 
+  <!-- ─── VENDAS ─── -->
+  <div class="page" id="page-vendas">
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="max-width:200px">
+          <label>Dia</label>
+          <input type="date" id="vendasData" onchange="setTimeout(renderVendas,0)" />
+        </div>
+        <button class="btn btn-secondary" onclick="definirCaixaInicial()">💰 Definir Caixa Inicial do Dia</button>
+        <button class="btn btn-primary" style="margin-left:auto" onclick="abrirModalVenda()">+ Nova Venda</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="vendasStats"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🛒</span> Vendas do Dia</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hora</th><th>Descrição</th><th>Qtd</th><th>Preço Unit.</th><th>Forma Pgto</th><th>Total</th><th>Ações</th></tr></thead>
+          <tbody id="vendasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">📅</span> Resumo por Dia</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Caixa Inicial</th><th>Total Vendido</th><th>Dinheiro</th><th>Pix</th><th>Crédito</th><th>Débito</th><th>Caixa Esperado (Dinheiro)</th></tr></thead>
+          <tbody id="vendasResumoBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── NOVA OS ─── -->
   <div class="page" id="page-nova-os">
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="icon">📝</span> Nova Ordem de Serviço</div>
+        <div class="card-title"><span class="icon">📝</span> <span id="novaOSTitulo">Nova Ordem de Serviço</span></div>
+        <input type="hidden" id="osEditandoId" value="" />
       </div>
 
       <!-- DADOS DO CLIENTE -->
@@ -835,7 +878,12 @@
         </div>
         <div class="form-group">
           <label>Valor do Serviço (R$)</label>
-          <input type="number" id="valorServico" placeholder="0,00" min="0" step="0.01" />
+          <input type="number" id="valorServico" placeholder="0,00" min="0" step="0.01" oninput="atualizarLucroOS()" />
+        </div>
+        <div class="form-group">
+          <label>Custo (R$)</label>
+          <input type="number" id="custoServico" placeholder="0,00" min="0" step="0.01" oninput="atualizarLucroOS()" />
+          <small id="lucroOSPreview" style="color:var(--text-muted);font-size:11px;margin-top:4px;display:block"></small>
         </div>
         <div class="form-group">
           <label>Previsão de Entrega</label>
@@ -867,6 +915,7 @@
         <select id="filterStatus" onchange="renderListaOS()" style="min-width:160px">
           <option value="">Todos os Status</option>
           <option>Aguardando</option>
+          <option>Aguardando Peça</option>
           <option>Em Andamento</option>
           <option>Concluído</option>
           <option>Entregue</option>
@@ -951,7 +1000,10 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title"><span class="icon">💰</span> Lançamentos</div>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalLancamento()">+ Novo Lançamento</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-danger btn-sm" onclick="excluirTodosLancamentos()">🗑 Excluir Todos</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalLancamento()">+ Novo Lançamento</button>
+        </div>
       </div>
 
       <!-- Filtros -->
@@ -967,6 +1019,8 @@
           </select>
           <select id="filterCatFin" onchange="renderFinanceiro()" style="min-width:160px">
             <option value="">Todas as categorias</option>
+            <option>Nota de Serviço</option>
+            <option>Venda de Produto</option>
             <option>Serviço OS</option>
             <option>Venda de Acessório</option>
             <option>Compra de Peças</option>
@@ -1004,7 +1058,7 @@
 
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Saída/Custo</th><th>Entrada/Valor</th><th>Ações</th></tr></thead>
           <tbody id="finBody"></tbody>
         </table>
       </div>
@@ -1107,17 +1161,122 @@
     <div class="form-grid" style="margin-bottom:16px">
       <div class="form-group"><label>Data *</label><input type="date" id="finData" /></div>
       <div class="form-group"><label>Tipo *</label>
-        <select id="finTipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+        <select id="finTipo" onchange="toggleFinCustoVisibility()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
       </div>
       <div class="form-group full"><label>Descrição *</label><input type="text" id="finDesc" placeholder="Ex: OS #0045 — Moto G82" /></div>
       <div class="form-group"><label>Categoria</label>
         <select id="finCat"><option>Serviço OS</option><option>Venda de Acessório</option><option>Compra de Peças</option><option>Aluguel</option><option>Energia / Água</option><option>Salário</option><option>Outros</option></select>
       </div>
       <div class="form-group"><label>Valor (R$) *</label><input type="number" id="finValor" placeholder="0,00" min="0" step="0.01" /></div>
+      <div class="form-group" id="finCustoGroup"><label>Custo (R$)</label><input type="number" id="finCusto" placeholder="0,00" min="0" step="0.01" /></div>
     </div>
     <div class="actions-row">
       <button class="btn btn-primary" onclick="salvarLancamento()">✅ Salvar</button>
       <button class="btn btn-secondary" onclick="closeModal('modalLancamento')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL NOVA VENDA ─── -->
+<div class="modal-overlay" id="modalVenda">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">🛒 Nova Venda</span>
+      <button class="modal-close" onclick="closeModal('modalVenda')">✕</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:10px">
+      <div class="form-group full">
+        <label>Descrição do Produto *</label>
+        <input type="text" id="vendaDescricao" placeholder="Ex: Capinha iPhone 13, Película 3D, Carregador..." />
+      </div>
+      <div class="form-group">
+        <label>Preço Unitário (R$) *</label>
+        <input type="number" id="vendaPreco" min="0" step="0.01" placeholder="0,00" oninput="atualizarTotalVenda()" />
+      </div>
+      <div class="form-group">
+        <label>Quantidade *</label>
+        <input type="number" id="vendaQuantidade" min="1" step="1" value="1" oninput="atualizarTotalVenda()" />
+      </div>
+      <div class="form-group full" id="vendaFormaSimplesWrap">
+        <label>Forma de Pagamento *</label>
+        <select id="vendaFormaPagamento">
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Pix">Pix</option>
+          <option value="Crédito">Crédito</option>
+          <option value="Débito">Débito</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-size:12px;font-weight:500;text-transform:none;color:var(--text-muted)">
+          <input type="checkbox" id="vendaPagamentoDividido" onchange="toggleDividirPagamento()" style="width:auto" />
+          Cliente pagou com duas formas de pagamento?
+        </label>
+      </div>
+      <div class="form-group full" id="vendaFormaDividida" style="display:none">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Forma de Pagamento 1</label>
+            <select id="vendaFormaPagamento1">
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Pix">Pix</option>
+              <option value="Crédito">Crédito</option>
+              <option value="Débito">Débito</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor Pago — Forma 1 (R$)</label>
+            <input type="number" id="vendaValorPag1" min="0" step="0.01" placeholder="0,00" oninput="sincronizarValor2()" />
+          </div>
+          <div class="form-group">
+            <label>Forma de Pagamento 2</label>
+            <select id="vendaFormaPagamento2">
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Pix">Pix</option>
+              <option value="Crédito" selected>Crédito</option>
+              <option value="Débito">Débito</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor Pago — Forma 2 (R$)</label>
+            <input type="number" id="vendaValorPag2" min="0" step="0.01" readonly style="opacity:0.75" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">O valor da Forma 2 é calculado automaticamente (Total − Forma 1).</div>
+      </div>
+      <div class="form-group">
+        <label>Data da Venda *</label>
+        <input type="date" id="vendaData" />
+      </div>
+    </div>
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:10px">
+      Total da venda: <strong id="vendaTotalPreview" style="color:var(--gold);font-size:18px">R$ 0,00</strong>
+    </div>
+    <input type="hidden" id="vendaEditId" />
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="salvarVenda()">✅ Salvar Venda</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalVenda')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL CAIXA INICIAL DO DIA ─── -->
+<div class="modal-overlay" id="modalCaixaInicial">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">💰 Caixa Inicial do Dia</span>
+      <button class="modal-close" onclick="closeModal('modalCaixaInicial')">✕</button>
+    </div>
+    <div style="padding:8px 0 16px">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Data</label>
+        <input type="date" id="caixaInicialData" disabled />
+      </div>
+      <div class="form-group">
+        <label>Valor Inicial (R$) *</label>
+        <input type="number" id="caixaInicialValor" min="0" step="0.01" placeholder="0,00" />
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="salvarCaixaInicial()">✅ Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalCaixaInicial')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1170,6 +1329,7 @@
   </div>
 </div>
 
+<!-- ─── MODAL EDITAR MODELO DA OS ─── -->
 <!-- ─── MODAL NOVO MODELO/MARCA ─── -->
 <div class="modal-overlay" id="modalNovoModelo">
   <div class="modal" style="max-width:480px">
@@ -1210,6 +1370,77 @@
     </div>
     <div id="modalOSContent"></div>
     <div class="actions-row" id="modalOSActions"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- ─── MODAL PAGAMENTO OS ─── -->
+<div class="modal-overlay" id="modalPagamentoOS" style="z-index:200">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">💳 Confirmar Pagamento</span>
+      <button class="modal-close" onclick="closeModal('modalPagamentoOS')">✕</button>
+    </div>
+    <div style="padding:8px 0 16px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+        OS: <strong id="pagOSLabel" style="color:var(--gold)"></strong>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Valor Recebido (R$)</label>
+        <input type="number" id="pagOSValor" min="0" step="0.01" placeholder="0,00" />
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Forma de Pagamento</label>
+        <select id="pagOSForma">
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Pix">Pix</option>
+          <option value="Crédito">Crédito</option>
+          <option value="Débito">Débito</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Data do Pagamento</label>
+        <input type="date" id="pagOSData" />
+      </div>
+      <input type="hidden" id="pagOSId" />
+      <div id="pagOSCustoInfo" style="display:none;font-size:12px;color:var(--danger);background:#2b0d0d;border:1px solid var(--danger);border-radius:6px;padding:8px 10px;margin-top:8px"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:12px">
+        Ao confirmar, o valor será lançado automaticamente no Financeiro como entrada.
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="confirmarPagamentoOS()">✅ Confirmar Pagamento</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalPagamentoOS')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL EDITAR MODELO DA OS ─── -->
+<div class="modal-overlay" id="modalEditarModeloOS" style="z-index:200">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar Modelo do Aparelho</span>
+      <button class="modal-close" onclick="closeModal('modalEditarModeloOS')">✕</button>
+    </div>
+    <div style="padding:8px 0 16px">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Marca</label>
+        <input type="text" id="editModeloOSMarca" placeholder="Ex: Samsung, Apple (iPhone)..." />
+      </div>
+      <div class="form-group">
+        <label>Modelo *</label>
+        <input type="text" id="editModeloOSModelo" placeholder="Ex: Galaxy A03 Core..." />
+      </div>
+      <input type="hidden" id="editModeloOSId" />
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px">
+        Ao salvar, o nome do modelo é atualizado também na Tabela de Preços (mantendo os preços já cadastrados, se houver).
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="salvarEditarModeloOS()">✅ Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalEditarModeloOS')">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -1487,6 +1718,7 @@
   function badgeHTML(status) {
     const map = {
       'Aguardando':  'aguardando',
+      'Aguardando Peça': 'peca',
       'Em Andamento':'andamento',
       'Concluído':   'concluido',
       'Entregue':    'entregue',
@@ -1575,6 +1807,86 @@
     if (!tipo)  { toast('Selecione o tipo de manutenção.', true); return; }
 
     const data = getData();
+    const editandoId = parseInt(document.getElementById('osEditandoId').value);
+    const editando = !isNaN(editandoId) && editandoId > 0;
+
+    if (editando) {
+      // Modo edição — atualiza a OS existente
+      const idx = data.ordens.findIndex(o => o.id === editandoId);
+      if (idx === -1) { toast('OS não encontrada.', true); return; }
+      const osExistente = data.ordens[idx];
+      Object.assign(osExistente, {
+        nomeCliente:    nome,
+        telefone:       document.getElementById('telefone').value.trim(),
+        cpf:            document.getElementById('cpf').value.trim(),
+        rg:             document.getElementById('rg').value.trim(),
+        endereco:       document.getElementById('endereco').value.trim(),
+        bairro:         document.getElementById('bairro').value.trim(),
+        cidade:         document.getElementById('cidade').value.trim(),
+        email:          document.getElementById('email').value.trim(),
+        tecnico:        document.getElementById('tecnico').value.trim(),
+        marca:          document.getElementById('marca').value,
+        modeloAparelho: model,
+        imei:           document.getElementById('imei').value.trim(),
+        imei2:          document.getElementById('imei2').value.trim(),
+        cor:            document.getElementById('cor').value.trim(),
+        acessorios:     document.getElementById('acessorios').value.trim(),
+        senha:          document.getElementById('senha').value.trim(),
+        senhaSeq:       window._getSenhaSeq ? window._getSenhaSeq() : (osExistente.senhaSeq || []),
+        senhaTipo:      document.getElementById('senhaTipo').value,
+        estetica: {
+          frontal: {
+            arranhado:  getChk('est_frontal_arranhado'), quebrado:   getChk('est_frontal_quebrado'),
+            amassado:   getChk('est_frontal_amassado'),  trincado:   getChk('est_frontal_trincado'),
+            descascado: getChk('est_frontal_descascado'), outros:    getChk('est_frontal_outros') ? (document.getElementById('est_frontal_outros_txt').value.trim() || 'Sim') : '',
+          },
+          traseira: {
+            arranhado:  getChk('est_traseira_arranhado'), quebrado:   getChk('est_traseira_quebrado'),
+            amassado:   getChk('est_traseira_amassado'),  trincado:   getChk('est_traseira_trincado'),
+            descascado: getChk('est_traseira_descascado'), outros:    getChk('est_traseira_outros') ? (document.getElementById('est_traseira_outros_txt').value.trim() || 'Sim') : '',
+          }
+        },
+        defeitos: {
+          nao_liga: getChk('def_nao_liga'), nao_carrega: getChk('def_nao_carrega'),
+          cam_frontal: getChk('def_cam_frontal'), cam_traseira: getChk('def_cam_traseira'),
+          radio: getChk('def_radio'), wifi: getChk('def_wifi'), fone: getChk('def_fone'),
+          travado_logo: getChk('def_travado_logo'), rede: getChk('def_rede'),
+          teclado: getChk('def_teclado'), display: getChk('def_display'), touch: getChk('def_touch'),
+          campainha: getChk('def_campainha'), auricular: getChk('def_auricular'),
+          microfone: getChk('def_microfone'), reiniciando: getChk('def_reiniciando'),
+          desliga_sozinho: getChk('def_desliga_sozinho'), touch_quebrado: getChk('def_touch_quebrado'),
+          nao_detectar: getChk('def_nao_detectar'),
+        },
+        defeitoRelatado: document.getElementById('defeitoRelatado').value.trim(),
+        checklist: {
+          sinal: getRadio('cl_sinal'), touch_id: getRadio('cl_touch_id'),
+          cam_frontal: getRadio('cl_cam_frontal'), cam_traseira: getRadio('cl_cam_traseira'),
+          flash: getRadio('cl_flash'), wifi: getRadio('cl_wifi'), sensor: getRadio('cl_sensor'),
+          auricular: getRadio('cl_auricular'), campainha: getRadio('cl_campainha'),
+          microfone: getRadio('cl_microfone'), display: getRadio('cl_display'),
+          conector: getRadio('cl_conector'), inducao: getRadio('cl_inducao'),
+          volume: getRadio('cl_volume'), power: getRadio('cl_power'), silencio: getRadio('cl_silencio'),
+          home: getRadio('cl_home'), vibra: getRadio('cl_vibra'),
+          nao_possivel: getChk('cl_nao_possivel'),
+        },
+        tipoManutencao: tipo,
+        valorServico:   document.getElementById('valorServico').value,
+        custoServico:   document.getElementById('custoServico').value,
+        previsaoEntrega:document.getElementById('previsaoEntrega').value,
+        observacoes:    document.getElementById('observacoes').value.trim(),
+      });
+      osExistente.historico = osExistente.historico || [];
+      osExistente.historico.push(`${today()} — OS editada manualmente.`);
+      saveData(data);
+      document.getElementById('osEditandoId').value = '';
+      document.getElementById('novaOSTitulo').textContent = 'Nova Ordem de Serviço';
+      toast(`✅ OS #${String(editandoId).padStart(4,'0')} atualizada com sucesso!`);
+      limparForm();
+      showPage('lista-os');
+      return;
+    }
+
+    // Modo criação — cria nova OS
     const os = {
       id: data.nextId++,
       status: 'Aguardando',
@@ -1668,6 +1980,7 @@
       // Serviço
       tipoManutencao: tipo,
       valorServico:   document.getElementById('valorServico').value,
+      custoServico:   document.getElementById('custoServico').value,
       previsaoEntrega:document.getElementById('previsaoEntrega').value,
       observacoes:    document.getElementById('observacoes').value.trim(),
       estadoVisual:   '',
@@ -1682,9 +1995,11 @@
   }
 
   function limparForm() {
+    document.getElementById('osEditandoId').value = '';
+    document.getElementById('novaOSTitulo').textContent = 'Nova Ordem de Serviço';
     ['nomeCliente','telefone','cpf','rg','endereco','bairro','cidade','email',
      'imei','imei2','cor','senha','senhaNum','acessorios','tipoManutencao',
-     'valorServico','previsaoEntrega','defeitoRelatado','observacoes'].forEach(id => {
+     'valorServico','custoServico','previsaoEntrega','defeitoRelatado','observacoes'].forEach(id => {
        const el = document.getElementById(id);
        if (el) el.value = '';
     });
@@ -1726,6 +2041,12 @@
     );
     if (filterSt) os = os.filter(o => o.status === filterSt);
 
+    // IDs de OS que já têm custo embutido no lançamento
+    const fin = getFin();
+    const custosLancados = new Set(
+      fin.lancamentos.filter(l => l.osId && l.custo > 0).map(l => l.osId)
+    );
+
     const tbody = document.getElementById('listaOSBody');
     tbody.innerHTML = os.map(o => `
       <tr>
@@ -1740,7 +2061,13 @@
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="verOS(${o.id})">👁 Ver</button>
+            <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="editarOS(${o.id})">✏️</button>
             <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="imprimirOS(${o.id})">🖨</button>
+            ${o.pago
+              ? `<button class="btn btn-sm" style="background:#0d2b1f;border:1px solid var(--success);color:var(--success)" onclick="desmarcarPagamentoOS(${o.id})" title="Clique para desmarcar pagamento">✅ Pago</button>
+                 ${(parseFloat(o.custoServico)||0) > 0 && !custosLancados.has(o.id) ? `<button class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 6px" onclick="lancarCustoPendente(${o.id})" title="Custo não lançado no financeiro">⚠️ Custo</button>` : ''}`
+              : `<button class="btn btn-sm btn-primary" style="font-size:11px" onclick="abrirModalPagamentoOS(${o.id})">💳 Pago</button>`
+            }
           </div>
         </td>
       </tr>
@@ -1748,6 +2075,229 @@
   }
 
   // ── Ver OS ──
+  // ── Pagamento de OS ──
+  function lancarCustoPendente(id) {
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+    const custo = parseFloat(os.custoServico) || 0;
+    if (!custo) { toast('Esta OS não tem custo registrado.', true); return; }
+    if (!confirm(`Adicionar custo de ${formatMoney(custo)} ao lançamento da OS #${String(id).padStart(4,'0')}?`)) return;
+    const fin = getFin();
+    // Encontrar o lançamento de entrada desta OS e embutir o custo
+    const lanc = fin.lancamentos.find(l => l.osId === id && l.tipo === 'entrada');
+    if (lanc) {
+      lanc.custo = custo;
+    } else {
+      // Fallback: criar lançamento se não existir (não deveria acontecer)
+      fin.lancamentos.push({
+        id: fin.nextId++,
+        data: os.dataISOEntrada || new Date().toISOString().slice(0,10),
+        desc: `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`,
+        categoria: 'Nota de Serviço',
+        tipo: 'entrada',
+        valor: parseFloat(os.valorServico) || 0,
+        custo,
+        osId: id,
+      });
+    }
+    saveFin(fin);
+    toast(`✅ Custo de ${formatMoney(custo)} incluído no lançamento!`);
+    renderListaOS();
+    renderFinanceiro();
+  }
+
+  function desmarcarPagamentoOS(id) {
+    if (!confirm('Desmarcar pagamento desta OS? O lançamento correspondente no Financeiro também será removido.')) return;
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+    os.pago = false;
+    os.historico = os.historico || [];
+    os.historico.push(`${today()} — Pagamento desmarcado.`);
+    delete os.formaPagamento;
+    delete os.dataPagamento;
+    delete os.valorPago;
+    saveData(data);
+
+    // Remover lançamento correspondente do financeiro
+    const fin = getFin();
+    fin.lancamentos = fin.lancamentos.filter(l => l.osId !== id);
+    saveFin(fin);
+
+    toast('Pagamento desmarcado e lançamento removido do Financeiro.');
+    renderListaOS();
+  }
+
+  function abrirModalPagamentoOS(id) {
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+    document.getElementById('pagOSId').value = id;
+    document.getElementById('pagOSLabel').textContent = `#${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`;
+    document.getElementById('pagOSValor').value = parseFloat(os.valorServico) || '';
+    document.getElementById('pagOSForma').value = 'Dinheiro';
+    document.getElementById('pagOSData').value = new Date().toISOString().slice(0,10);
+
+    // Mostrar custo se existir
+    const custo = parseFloat(os.custoServico) || 0;
+    const custoInfo = document.getElementById('pagOSCustoInfo');
+    if (custoInfo) {
+      custoInfo.style.display = custo > 0 ? '' : 'none';
+      custoInfo.textContent = custo > 0 ? `Custo registrado: ${formatMoney(custo)} — será lançado como saída automaticamente.` : '';
+    }
+
+    document.getElementById('modalPagamentoOS').classList.add('open');
+    setTimeout(() => document.getElementById('pagOSValor').focus(), 50);
+  }
+
+  function confirmarPagamentoOS() {
+    const id = Number(document.getElementById('pagOSId').value);
+    const valor = parseFloat(document.getElementById('pagOSValor').value);
+    const forma = document.getElementById('pagOSForma').value;
+    const dataPag = document.getElementById('pagOSData').value;
+    if (!dataPag || isNaN(valor) || valor <= 0) { toast('Preencha valor e data corretamente.', true); return; }
+
+    // Marcar OS como paga
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+    os.pago = true;
+    os.formaPagamento = forma;
+    os.dataPagamento = new Date(dataPag+'T12:00').toLocaleDateString('pt-BR');
+    os.valorPago = valor;
+    os.historico = os.historico || [];
+    os.historico.push(`${today()} — Pagamento confirmado: ${forma}, ${formatMoney(valor)}.`);
+    saveData(data);
+
+    // Lançar entrada no financeiro (custo fica embutido no mesmo lançamento)
+    const fin = getFin();
+    const custo = parseFloat(os.custoServico) || 0;
+    fin.lancamentos.push({
+      id: fin.nextId++,
+      data: dataPag,
+      desc: `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`,
+      categoria: 'Nota de Serviço',
+      tipo: 'entrada',
+      valor,
+      custo,
+      formaPagamento: forma,
+      osId: id,
+    });
+    saveFin(fin);
+
+    closeModal('modalPagamentoOS');
+    toast(`✅ Pagamento de ${formatMoney(valor)} confirmado e lançado no Financeiro!`);
+    renderListaOS();
+  }
+
+  function atualizarLucroOS() {
+    const valor = parseFloat(document.getElementById('valorServico').value) || 0;
+    const custo = parseFloat(document.getElementById('custoServico').value) || 0;
+    const el = document.getElementById('lucroOSPreview');
+    if (!el) return;
+    if (valor > 0 || custo > 0) {
+      const lucro = valor - custo;
+      el.textContent = `Lucro estimado: ${formatMoney(lucro)}`;
+      el.style.color = lucro >= 0 ? 'var(--success)' : 'var(--danger)';
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  function editarOS(id) {
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+
+    limparForm();
+    document.getElementById('osEditandoId').value = id;
+    document.getElementById('novaOSTitulo').textContent = `Editando OS #${String(id).padStart(4,'0')}`;
+
+    // Cliente
+    const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+    set('nomeCliente', os.nomeCliente);
+    set('telefone', os.telefone);
+    set('cpf', os.cpf);
+    set('rg', os.rg);
+    set('endereco', os.endereco);
+    set('bairro', os.bairro);
+    set('cidade', os.cidade);
+    set('email', os.email);
+    set('tecnico', os.tecnico);
+    // Aparelho
+    set('marca', os.marca);
+    atualizarModelos();
+    setTimeout(() => set('modeloAparelho', os.modeloAparelho), 80);
+    set('imei', os.imei);
+    set('imei2', os.imei2);
+    set('cor', os.cor);
+    set('acessorios', os.acessorios);
+    // Senha
+    set('senhaTipo', os.senhaTipo || 'padrao');
+    set('senha', os.senha || '');
+    // Estética
+    const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+    if (os.estetica) {
+      const f = os.estetica.frontal || {};
+      const t = os.estetica.traseira || {};
+      setChk('est_frontal_arranhado', f.arranhado); setChk('est_frontal_quebrado', f.quebrado);
+      setChk('est_frontal_amassado', f.amassado);   setChk('est_frontal_trincado', f.trincado);
+      setChk('est_frontal_descascado', f.descascado); setChk('est_frontal_outros', f.outros);
+      setChk('est_traseira_arranhado', t.arranhado); setChk('est_traseira_quebrado', t.quebrado);
+      setChk('est_traseira_amassado', t.amassado);   setChk('est_traseira_trincado', t.trincado);
+      setChk('est_traseira_descascado', t.descascado); setChk('est_traseira_outros', t.outros);
+    }
+    // Defeitos
+    if (os.defeitos) {
+      Object.keys(os.defeitos).forEach(k => setChk('def_' + k, os.defeitos[k]));
+    }
+    // Checklist
+    if (os.checklist) {
+      const cl = os.checklist;
+      const setRad = (name, val) => {
+        const els = document.querySelectorAll(`input[name="${name}"]`);
+        els.forEach(r => { if (r.value === val) r.checked = true; });
+      };
+      setRad('cl_sinal', cl.sinal);       setRad('cl_touch_id', cl.touch_id);
+      setRad('cl_cam_frontal', cl.cam_frontal); setRad('cl_cam_traseira', cl.cam_traseira);
+      setRad('cl_flash', cl.flash);       setRad('cl_wifi', cl.wifi);
+      setRad('cl_sensor', cl.sensor);     setRad('cl_auricular', cl.auricular);
+      setRad('cl_campainha', cl.campainha); setRad('cl_microfone', cl.microfone);
+      setRad('cl_display', cl.display);   setRad('cl_conector', cl.conector);
+      setRad('cl_inducao', cl.inducao);   setRad('cl_volume', cl.volume);
+      setRad('cl_power', cl.power);       setRad('cl_silencio', cl.silencio);
+      setRad('cl_home', cl.home);         setRad('cl_vibra', cl.vibra);
+      setChk('cl_nao_possivel', cl.nao_possivel);
+    }
+    // Serviço
+    set('tipoManutencao', os.tipoManutencao);
+    set('valorServico', os.valorServico);
+    set('custoServico', os.custoServico);
+    set('previsaoEntrega', os.previsaoEntrega);
+    set('defeitoRelatado', os.defeitoRelatado);
+    set('observacoes', os.observacoes);
+    atualizarLucroOS();
+
+    showPage('nova-os');
+    window.scrollTo(0, 0);
+    toast(`Editando OS #${String(id).padStart(4,'0')} — clique em Salvar para confirmar.`);
+  }
+
+  function atualizarLucroOS() {
+    const valor = parseFloat(document.getElementById('valorServico').value) || 0;
+    const custo = parseFloat(document.getElementById('custoServico').value) || 0;
+    const el = document.getElementById('lucroOSPreview');
+    if (!el) return;
+    if (valor > 0 || custo > 0) {
+      const lucro = valor - custo;
+      el.textContent = `Lucro estimado: ${formatMoney(lucro)}`;
+      el.style.color = lucro >= 0 ? 'var(--success)' : 'var(--danger)';
+    } else {
+      el.textContent = '';
+    }
+  }
+
   function verOS(id) {
     const data = getData();
     const os = data.ordens.find(o => o.id === id);
@@ -1822,7 +2372,7 @@
         <div>
           <div class="section-title">Aparelho</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:14px">
-            <div><span style="color:var(--text-muted)">Modelo:</span> <strong>${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</strong></div>
+            <div><span style="color:var(--text-muted)">Modelo:</span> <strong>${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</strong> <button class="btn btn-sm btn-secondary" style="padding:1px 7px;font-size:11px;margin-left:4px" onclick="abrirEditarModeloOS(${os.id})">✏️ Editar</button></div>
             ${os.imei ? `<div><span style="color:var(--text-muted)">IMEI:</span> ${os.imei}${os.imei2 ? ' / ' + os.imei2 : ''}</div>` : ''}
             ${os.cor ? `<div><span style="color:var(--text-muted)">Cor:</span> ${os.cor}</div>` : ''}
             <div style="display:flex;align-items:flex-start;gap:8px;margin-top:4px">
@@ -1863,6 +2413,8 @@
         <div><span style="color:var(--text-muted)">Tipo:</span> ${os.tipoManutencao}</div>
         <div><span style="color:var(--text-muted)">Técnico:</span> ${os.tecnico || '—'}</div>
         <div><span style="color:var(--text-muted)">Valor:</span> <strong style="color:var(--gold)">${formatMoney(os.valorServico)}</strong></div>
+        ${os.custoServico > 0 ? `<div><span style="color:var(--text-muted)">Custo:</span> <strong style="color:var(--danger)">− ${formatMoney(os.custoServico)}</strong></div>
+        <div><span style="color:var(--text-muted)">Lucro:</span> <strong style="color:var(--success)">${formatMoney((parseFloat(os.valorServico)||0)-(parseFloat(os.custoServico)||0))}</strong></div>` : ''}
         <div><span style="color:var(--text-muted)">Entrada:</span> ${os.dataEntrada}</div>
         <div><span style="color:var(--text-muted)">Previsão:</span> ${os.previsaoEntrega ? new Date(os.previsaoEntrega+'T12:00').toLocaleDateString('pt-BR') : '—'}</div>
         <div><span style="color:var(--text-muted)">Status:</span> ${badgeHTML(os.status)}</div>
@@ -1871,7 +2423,7 @@
 
       <div class="section-title" style="margin-top:16px">Alterar Status</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        ${['Aguardando','Em Andamento','Concluído','Entregue','Cancelado'].map(s =>
+        ${['Aguardando','Aguardando Peça','Em Andamento','Concluído','Entregue','Cancelado'].map(s =>
           `<button class="btn btn-sm ${os.status===s?'btn-primary':'btn-secondary'}" onclick="alterarStatus(${os.id},'${s}')">${s}</button>`
         ).join('')}
       </div>
@@ -1897,6 +2449,54 @@
     }, 30);
   }
 
+  // ── Editar Modelo direto na tela de detalhes da OS ──
+  function abrirEditarModeloOS(id) {
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) return;
+    document.getElementById('editModeloOSId').value = id;
+    document.getElementById('editModeloOSMarca').value = os.marca || '';
+    document.getElementById('editModeloOSModelo').value = os.modeloAparelho || '';
+    document.getElementById('modalEditarModeloOS').classList.add('open');
+    setTimeout(() => {
+      const inp = document.getElementById('editModeloOSModelo');
+      inp.focus(); inp.select();
+    }, 50);
+  }
+
+  function salvarEditarModeloOS() {
+    const id = Number(document.getElementById('editModeloOSId').value);
+    const novaMarca = document.getElementById('editModeloOSMarca').value.trim();
+    const novoModelo = document.getElementById('editModeloOSModelo').value.trim();
+    if (!novoModelo) { toast('Informe o nome do modelo.', true); return; }
+
+    const data = getData();
+    const os = data.ordens.find(o => o.id === id);
+    if (!os) { closeModal('modalEditarModeloOS'); return; }
+
+    const modeloAntigo = os.modeloAparelho;
+    os.marca = novaMarca;
+    os.modeloAparelho = novoModelo;
+    os.historico = os.historico || [];
+    if (modeloAntigo !== novoModelo) os.historico.push(`${today()} — Modelo do aparelho alterado de "${modeloAntigo}" para "${novoModelo}".`);
+    saveData(data);
+
+    // Sincroniza com a Tabela de Preços: renomeia preservando preços já salvos
+    if (modeloAntigo && modeloAntigo !== novoModelo) {
+      renomearModelo(modeloAntigo, novoModelo);
+    }
+    // Garante que o modelo (com o nome atualizado) exista na Tabela de Preços
+    if (novaMarca) {
+      saveNovoModelo(marcaParaGrupoTabela(novaMarca), novoModelo);
+      saveCustomModelo(novaMarca, novoModelo);
+    }
+
+    closeModal('modalEditarModeloOS');
+    toast('✅ Modelo atualizado e sincronizado com a Tabela de Preços!');
+    verOS(id);
+    if (typeof renderListaOS === 'function') renderListaOS();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }
 
   function closeModal(id) {
     document.getElementById(id).classList.remove('open');
@@ -1917,6 +2517,7 @@
     // Lança automaticamente no financeiro ao marcar como Entregue
     if (novoStatus === 'Entregue' && statusAnterior !== 'Entregue') {
       const valor = parseFloat(os.valorServico) || 0;
+      const custo = parseFloat(os.custoServico) || 0;
       if (valor > 0) {
         const fin = getFin();
         const numOS = String(os.id).padStart(4, '0');
@@ -1927,6 +2528,8 @@
           categoria: 'Serviço OS',
           tipo: 'entrada',
           valor,
+          custo,
+          osId: os.id
         });
         saveFin(fin);
         toast(`✅ OS #${numOS} entregue — R$ ${valor.toFixed(2).replace('.',',')} lançado no financeiro.`);
@@ -2102,6 +2705,202 @@
   }
 
   // ── Financeiro ──
+  // ══════════════ VENDAS ══════════════
+  const VENDAS_KEY = 'imperaCellVendas';
+
+  function getVendas() {
+    try { return JSON.parse(localStorage.getItem(VENDAS_KEY)) || { vendas: [], caixas: {}, nextId: 1 }; }
+    catch { return { vendas: [], caixas: {}, nextId: 1 }; }
+  }
+  function saveVendas(d) { localStorage.setItem(VENDAS_KEY, JSON.stringify(d)); }
+
+  function prefillVendasData() {
+    const inp = document.getElementById('vendasData');
+    if (inp && !inp.value) inp.value = new Date().toISOString().slice(0,10);
+  }
+
+  function abrirModalVenda() {
+    document.getElementById('vendaEditId').value = '';
+    document.getElementById('vendaDescricao').value = '';
+    document.getElementById('vendaPreco').value = '';
+    document.getElementById('vendaQuantidade').value = 1;
+    document.getElementById('vendaFormaPagamento').value = 'Dinheiro';
+    prefillVendasData();
+    document.getElementById('vendaData').value = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
+    atualizarTotalVenda();
+    document.getElementById('modalVenda').classList.add('open');
+    setTimeout(() => document.getElementById('vendaDescricao').focus(), 50);
+  }
+
+  function editarVenda(id) {
+    const d = getVendas();
+    const v = d.vendas.find(x => x.id === id);
+    if (!v) return;
+    document.getElementById('vendaEditId').value = id;
+    document.getElementById('vendaDescricao').value = v.descricao;
+    document.getElementById('vendaPreco').value = v.preco;
+    document.getElementById('vendaQuantidade').value = v.quantidade;
+    document.getElementById('vendaFormaPagamento').value = v.formaPagamento;
+    document.getElementById('vendaData').value = v.data;
+    atualizarTotalVenda();
+    document.getElementById('modalVenda').classList.add('open');
+  }
+
+  function atualizarTotalVenda() {
+    const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
+    const qtd = parseInt(document.getElementById('vendaQuantidade').value) || 0;
+    document.getElementById('vendaTotalPreview').textContent = formatMoney(preco * qtd);
+  }
+
+  function salvarVenda() {
+    const descricao = document.getElementById('vendaDescricao').value.trim();
+    const preco = parseFloat(document.getElementById('vendaPreco').value);
+    const quantidade = parseInt(document.getElementById('vendaQuantidade').value);
+    const formaPagamento = document.getElementById('vendaFormaPagamento').value;
+    const data = document.getElementById('vendaData').value;
+    const editId = document.getElementById('vendaEditId').value;
+
+    if (!descricao || !data || isNaN(preco) || preco <= 0 || isNaN(quantidade) || quantidade <= 0) {
+      toast('Preencha descrição, preço, quantidade e data corretamente.', true);
+      return;
+    }
+
+    const total = preco * quantidade;
+    const d = getVendas();
+
+    if (editId) {
+      const v = d.vendas.find(x => x.id === Number(editId));
+      if (v) Object.assign(v, { descricao, preco, quantidade, formaPagamento, data, total });
+    } else {
+      d.vendas.push({
+        id: d.nextId++,
+        data,
+        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        descricao, preco, quantidade, total, formaPagamento,
+      });
+    }
+    saveVendas(d);
+    closeModal('modalVenda');
+    toast('✅ Venda salva!');
+    document.getElementById('vendasData').value = data;
+    renderVendas();
+  }
+
+  function excluirVenda(id) {
+    if (!confirm('Excluir esta venda?')) return;
+    const d = getVendas();
+    d.vendas = d.vendas.filter(x => x.id !== id);
+    saveVendas(d);
+    renderVendas();
+    toast('Venda excluída.');
+  }
+
+  function definirCaixaInicial() {
+    prefillVendasData();
+    const data = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
+    const d = getVendas();
+    document.getElementById('caixaInicialData').value = data;
+    document.getElementById('caixaInicialValor').value = d.caixas[data] != null ? d.caixas[data] : '';
+    document.getElementById('modalCaixaInicial').classList.add('open');
+    setTimeout(() => document.getElementById('caixaInicialValor').focus(), 50);
+  }
+
+  function salvarCaixaInicial() {
+    const data = document.getElementById('caixaInicialData').value;
+    const valor = parseFloat(document.getElementById('caixaInicialValor').value);
+    if (!data || isNaN(valor) || valor < 0) { toast('Informe um valor de caixa válido.', true); return; }
+    const d = getVendas();
+    d.caixas[data] = valor;
+    saveVendas(d);
+    closeModal('modalCaixaInicial');
+    toast('✅ Caixa inicial de ' + new Date(data+'T12:00').toLocaleDateString('pt-BR') + ' definido!');
+    renderVendas();
+  }
+
+  function renderVendas() {
+    // Preenche data padrão (hoje) apenas se ainda não tiver valor
+    const inputData = document.getElementById('vendasData');
+    if (inputData && !inputData.value) inputData.value = new Date().toISOString().slice(0,10);
+    const data = inputData ? inputData.value : new Date().toISOString().slice(0,10);
+
+    const d = getVendas();
+    const vendasDia = d.vendas.filter(v => v.data === data).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+
+    const totalDia = vendasDia.reduce((s,v) => s + (parseFloat(v.total)||0), 0);
+    const porForma = { 'Dinheiro': 0, 'Pix': 0, 'Crédito': 0, 'Débito': 0 };
+    vendasDia.forEach(v => {
+      // Suporte a pagamento dividido
+      if (v.pagamentos && v.pagamentos.length) {
+        v.pagamentos.forEach(p => { porForma[p.forma] = (porForma[p.forma]||0) + (parseFloat(p.valor)||0); });
+      } else {
+        const forma = v.formaPagamento || 'Dinheiro';
+        porForma[forma] = (porForma[forma]||0) + (parseFloat(v.total)||0);
+      }
+    });
+    const caixaInicial = d.caixas[data] != null ? d.caixas[data] : 0;
+    const caixaEsperado = caixaInicial + (porForma['Dinheiro']||0);
+
+    const stats = document.getElementById('vendasStats');
+    if (stats) stats.innerHTML = `
+      <div class="stat-card">
+        <span class="stat-label">Caixa Inicial do Dia</span>
+        <span class="stat-value blue">${formatMoney(caixaInicial)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Vendido no Dia</span>
+        <span class="stat-value gold">${formatMoney(totalDia)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Caixa Esperado (Dinheiro)</span>
+        <span class="stat-value green">${formatMoney(caixaEsperado)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Qtd. de Vendas</span>
+        <span class="stat-value" style="color:var(--accent)">${vendasDia.length}</span>
+      </div>
+    `;
+
+    const tbody = document.getElementById('vendasBody');
+    if (tbody) tbody.innerHTML = vendasDia.map(v => `
+      <tr>
+        <td>${v.hora || '—'}</td>
+        <td>${v.descricao}</td>
+        <td>${v.quantidade}</td>
+        <td>${formatMoney(v.preco)}</td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${v.formaPagamento}</span></td>
+        <td><strong style="color:var(--gold)">${formatMoney(v.total)}</strong></td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="editarVenda(${v.id})">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="excluirVenda(${v.id})">🗑</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhuma venda registrada neste dia.</td></tr>';
+
+    // Resumo por dia — junta dias com vendas e/ou caixa inicial definido
+    const dias = new Set([...d.vendas.map(v => v.data), ...Object.keys(d.caixas)]);
+    const diasOrdenados = [...dias].sort().reverse();
+    const resumoBody = document.getElementById('vendasResumoBody');
+    if (resumoBody) resumoBody.innerHTML = diasOrdenados.map(dia => {
+      const vd = d.vendas.filter(v => v.data === dia);
+      const tot = vd.reduce((s,v) => s + v.total, 0);
+      const pf = { 'Dinheiro': 0, 'Pix': 0, 'Crédito': 0, 'Débito': 0 };
+      vd.forEach(v => { pf[v.formaPagamento] = (pf[v.formaPagamento] || 0) + v.total; });
+      const ci = d.caixas[dia] != null ? d.caixas[dia] : 0;
+      const ce = ci + pf['Dinheiro'];
+      const ativo = dia === data;
+      return `<tr style="cursor:pointer;${ativo ? 'background:var(--surface2)' : ''}" onclick="document.getElementById('vendasData').value='${dia}'; renderVendas();">
+        <td>${new Date(dia+'T12:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' })}</td>
+        <td>${formatMoney(ci)}</td>
+        <td><strong style="color:var(--gold)">${formatMoney(tot)}</strong></td>
+        <td>${formatMoney(pf['Dinheiro'])}</td>
+        <td>${formatMoney(pf['Pix'])}</td>
+        <td>${formatMoney(pf['Crédito'])}</td>
+        <td>${formatMoney(pf['Débito'])}</td>
+        <td><strong style="color:var(--success)">${formatMoney(ce)}</strong></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Nenhum dia registrado ainda.</td></tr>';
+  }
+
   const FIN_KEY = 'imperaCellFin';
 
   function getFin() {
@@ -2110,12 +2909,24 @@
   }
   function saveFin(d) { localStorage.setItem(FIN_KEY, JSON.stringify(d)); }
 
-  function abrirModalLancamento() {
+  function toggleFinCustoVisibility() {
+    const tipo = document.getElementById('finTipo').value;
+    const group = document.getElementById('finCustoGroup');
+    if (group) {
+      group.style.display = tipo === 'entrada' ? '' : 'none';
+    }
+  }
+
+  function abrirModalLancamento(tipo) {
     document.getElementById('finData').value = new Date().toISOString().slice(0,10);
-    document.getElementById('finTipo').value = 'entrada';
+    document.getElementById('finTipo').value = tipo || 'entrada';
     document.getElementById('finDesc').value = '';
     document.getElementById('finValor').value = '';
+    const custoInput = document.getElementById('finCusto');
+    if (custoInput) custoInput.value = '';
+    toggleFinCustoVisibility();
     document.getElementById('modalLancamento').classList.add('open');
+    setTimeout(() => document.getElementById('finDesc').focus(), 50);
   }
 
   function salvarLancamento() {
@@ -2124,18 +2935,59 @@
     const data = document.getElementById('finData').value;
     if (!desc || !data || isNaN(valor) || valor <= 0) { toast('Preencha todos os campos.', true); return; }
     const d = getFin();
+    const tipo = document.getElementById('finTipo').value;
+    const custo = tipo === 'entrada' ? (parseFloat(document.getElementById('finCusto').value) || 0) : 0;
     d.lancamentos.push({
       id: d.nextId++,
       data,
       desc,
       categoria: document.getElementById('finCat').value,
-      tipo: document.getElementById('finTipo').value,
+      tipo,
       valor,
+      custo,
     });
     saveFin(d);
     closeModal('modalLancamento');
     toast('Lançamento salvo!');
     renderFinanceiro();
+  }
+
+  function excluirTodosLancamentos() {
+    const d = getFin();
+    const total = d.lancamentos.length;
+    if (total === 0) { toast('Não há lançamentos para excluir.', true); return; }
+    if (!confirm(`Excluir todos os ${total} lançamentos manuais?\n\nIsso inclui pagamentos de OS confirmados e saídas registradas.\nEssa ação não pode ser desfeita.`)) return;
+    d.lancamentos = [];
+    saveFin(d);
+    // Desmarcar pagamentos de OS que tinham lançamento
+    const data = getData();
+    data.ordens.forEach(os => {
+      if (os.pago) {
+        os.pago = false;
+        delete os.formaPagamento;
+        delete os.dataPagamento;
+        delete os.valorPago;
+      }
+    });
+    saveData(data);
+    toast('🗑 Todos os lançamentos foram excluídos.');
+    renderFinanceiro();
+    renderListaOS();
+  }
+
+    function excluirDuplicatasCustoOS() {
+    const d = getFin();
+    const antes = d.lancamentos.length;
+    d.lancamentos = d.lancamentos.filter(l =>
+      !l.desc.startsWith('Custo —') &&
+      !l.desc.startsWith('Custo - ') &&
+      !l.desc.startsWith('Custo –')
+    );
+    const removidos = antes - d.lancamentos.length;
+    if (removidos === 0) { toast('Nenhuma duplicata encontrada.', false); return; }
+    saveFin(d);
+    renderFinanceiro();
+    toast(`✅ ${removidos} linha(s) duplicada(s) de custo excluída(s)!`);
   }
 
   function excluirLancamento(id) {
@@ -2247,37 +3099,65 @@
     const cat    = document.getElementById('filterCatFin')?.value || '';
     const periodo = getPeriodoDatas();
 
-    let lista = [...d.lancamentos].sort((a,b) => b.data.localeCompare(a.data));
-    if (search) lista = lista.filter(l => l.desc.toLowerCase().includes(search) || l.categoria.toLowerCase().includes(search));
-    if (tipo)   lista = lista.filter(l => l.tipo === tipo);
-    if (cat)    lista = lista.filter(l => l.categoria === cat);
-    if (periodo) lista = lista.filter(l => l.data >= periodo.de && l.data <= periodo.ate);
+    // ── Lançamentos automáticos: apenas Vendas (OS entram via confirmação de pagamento) ──
+    const dv = getVendas();
+    const lancamentosVendas = dv.vendas.map(v => ({
+      id: 'venda-' + v.id,
+      data: v.data,
+      desc: `Venda — ${v.descricao}`,
+      categoria: 'Venda de Produto',
+      tipo: 'entrada',
+      valor: parseFloat(v.total)||0,
+      formaPagamento: v.formaPagamento,
+      automatico: true,
+    }));
 
-    const entradas = lista.filter(l => l.tipo === 'entrada').reduce((s,l) => s+l.valor, 0);
-    const saidas   = lista.filter(l => l.tipo === 'saida').reduce((s,l) => s+l.valor, 0);
-    const saldo    = entradas - saidas;
+    // ── Juntar tudo ──
+    let listaCompleta = [...d.lancamentos, ...lancamentosVendas]
+      .sort((a,b) => b.data.localeCompare(a.data));
+
+    // Filtro de período e busca aplicados na lista completa
+    if (search) listaCompleta = listaCompleta.filter(l => l.desc.toLowerCase().includes(search) || l.categoria.toLowerCase().includes(search));
+    if (periodo) listaCompleta = listaCompleta.filter(l => l.data >= periodo.de && l.data <= periodo.ate);
+
+    // Lista da tabela respeita também tipo e categoria
+    let lista = listaCompleta.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
+
+    const entradas    = listaCompleta.filter(l => l.tipo === 'entrada').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const custoEmbutido = listaCompleta.filter(l => l.tipo === 'entrada' && l.custo).reduce((s,l) => s+(parseFloat(l.custo)||0), 0);
+    const saidas      = listaCompleta.filter(l => l.tipo === 'saida').reduce((s,l) => s+(parseFloat(l.valor)||0), 0) + custoEmbutido;
+    const saldo       = entradas - saidas;
+    const totalOS     = listaCompleta.filter(l => l.categoria === 'Nota de Serviço').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const totalVendas = listaCompleta.filter(l => l.categoria === 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const faturamentoBruto = totalOS + totalVendas;
 
     // Label do período nos cards
     let periodoLabel = '';
-    if (periodo) periodoLabel = ` (${new Date(periodo.de+'T12:00').toLocaleDateString('pt-BR')} – ${new Date(periodo.ate+'T12:00').toLocaleDateString('pt-BR')})`;
+    if (periodo) periodoLabel = `<br><span style="font-size:10px;text-transform:none;letter-spacing:0">${new Date(periodo.de+'T12:00').toLocaleDateString('pt-BR')} – ${new Date(periodo.ate+'T12:00').toLocaleDateString('pt-BR')}</span>`;
 
     const stats = document.getElementById('finStats');
     if (stats) stats.innerHTML = `
       <div class="stat-card">
-        <span class="stat-label">Entradas${periodoLabel ? '<br><span style="font-size:10px;text-transform:none;letter-spacing:0">'+periodoLabel+'</span>' : ''}</span>
-        <span class="stat-value green">${formatMoney(entradas)}</span>
+        <span class="stat-label">🔧 Notas de Serviço${periodoLabel}</span>
+        <span class="stat-value gold">${formatMoney(totalOS)}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Saídas</span>
-        <span class="stat-value red">${formatMoney(saidas)}</span>
+        <span class="stat-label">🛒 Vendas de Produtos${periodoLabel}</span>
+        <span class="stat-value" style="color:var(--accent)">${formatMoney(totalVendas)}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Saldo</span>
+        <span class="stat-label">📈 Faturamento Bruto${periodoLabel}</span>
+        <span class="stat-value green">${formatMoney(faturamentoBruto)}</span>
+      </div>
+      <div class="stat-card" style="border-color:var(--danger)">
+        <span class="stat-label">📉 Saídas (despesas)${periodoLabel}</span>
+        <span class="stat-value red">− ${formatMoney(saidas)}</span>
+        <button class="btn btn-sm btn-danger" style="margin-top:10px;font-size:12px;padding:4px 12px" onclick="abrirModalLancamento('saida')">+ Lançar Saída</button>
+      </div>
+      <div class="stat-card" style="border-color:${saldo>=0?'var(--success)':'var(--danger)'}">
+        <span class="stat-label">💵 Faturamento Líquido${periodoLabel}</span>
         <span class="stat-value ${saldo>=0?'green':'red'}">${formatMoney(saldo)}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Lançamentos</span>
-        <span class="stat-value" style="color:var(--accent)">${lista.length}</span>
+        <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Bruto − Saídas</span>
       </div>
     `;
 
@@ -2285,19 +3165,36 @@
 
     const tbody = document.getElementById('finBody');
     if (!tbody) return;
-    tbody.innerHTML = lista.map(l => {
-      const dt   = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
-      const cor  = l.tipo === 'entrada' ? 'var(--success)' : 'var(--danger)';
-      const sinal = l.tipo === 'entrada' ? '+' : '−';
+    // Filtrar linhas "Custo — OS #XXXX" duplicadas (custo já está no campo custo da ENTRADA)
+    const listaFiltrada = lista.filter(l =>
+      !l.desc.startsWith('Custo —') &&
+      !l.desc.startsWith('Custo - ') &&
+      !l.desc.startsWith('Custo –')
+    );
+    tbody.innerHTML = listaFiltrada.map(l => {
+      const dt    = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
+      const pgto  = l.formaPagamento ? `<span style="font-size:11px;color:var(--text-muted)"> · ${l.formaPagamento}</span>` : '';
+      const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
+      // Coluna Saída/Custo
+      const colSaidaCusto = l.tipo === 'entrada'
+        ? (l.custo && l.custo > 0
+            ? `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.custo)}</span>`
+            : '<span style="color:var(--text-muted)">—</span>')
+        : `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.valor)}</span>`;
+      // Coluna Entrada/Valor
+      const colEntradaValor = l.tipo === 'entrada'
+        ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>`
+        : '<span style="color:var(--text-muted)">—</span>';
       return `<tr>
         <td>${dt}</td>
-        <td>${l.desc}</td>
+        <td>${l.desc}${pgto}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'Entrada':'Saída'}</span></td>
-        <td><strong style="color:${cor}">${sinal} ${formatMoney(l.valor)}</strong></td>
-        <td><button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑</button></td>
+        <td>${colSaidaCusto}</td>
+        <td>${colEntradaValor}</td>
+        <td>${excluirBtn}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
   }
 
   // ── showPage — atualizar para incluir novas páginas ──
@@ -2308,6 +3205,7 @@
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(t => { if (t.getAttribute('onclick')?.includes("'"+id+"'")) t.classList.add('active'); });
     if (id === 'dashboard') renderDashboard();
+    if (id === 'vendas') renderVendas();
     if (id === 'lista-os') renderListaOS();
     if (id === 'clientes') renderClientes();
     if (id === 'nova-os') prefillDate();
