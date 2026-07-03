@@ -525,19 +525,9 @@
       .print-os { position: absolute; top: 0; left: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
     }
   </style>
-
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-
-  // ── Inicializar Supabase ao carregar ──
-  window.addEventListener('DOMContentLoaded', async () => {
-    await _initSupabase();
-    // Renderizar a página atual
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
-  });
-</script>
-  </head>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
 <body>
   <!-- Loading overlay durante inicialização -->
   <div id="appLoading" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
@@ -1471,18 +1461,15 @@
   // ── SUPABASE — Camada de Persistência na Nuvem ──
   // ══════════════════════════════════════════════════════════
 
-  // ⚠️ CONFIGURAÇÃO: Preencha com seus dados do Supabase
-  const SUPABASE_URL  = 'https://egrrknwvdbkrnstaacmo.supabase.co';   // Ex: https://abc123.supabase.co
-  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVncnJrbnd2ZGJrcm5zdGFhY21vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTAwMjksImV4cCI6MjA5ODY2NjAyOX0.W6MNhF4P_bPxWop15cxMPr0_zdqCzSj954HM8S4-LqM'; // Sua anon/public key
+  const SUPABASE_URL  = 'https://egrrknwvdbkrnstaacmo.supabase.co';
+  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVncnJrbnd2ZGJrcm5zdGFhY21vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTAwMjksImV4cCI6MjA5ODY2NjAyOX0.W6MNhF4P_bPxWop15cxMPr0_zdqCzSj954HM8S4-LqM';
 
-  // Inicializar cliente Supabase
-  const _supabase = (typeof supabase !== 'undefined' && SUPABASE_URL !== 'SUA_URL_AQUI')
+  const _supabase = (typeof supabase !== 'undefined')
     ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
     : null;
 
   const _useSupabase = !!_supabase;
 
-  // Cache em memória — todas as leituras são síncronas a partir daqui
   const _cache = {
     ordens:       { ordens: [], nextId: 1 },
     financeiro:   { lancamentos: [], nextId: 1 },
@@ -1494,61 +1481,100 @@
     _loaded:      false,
   };
 
-  // ── Helpers para sync com Supabase ──
   async function _sbFetch(table) {
     if (!_supabase) return [];
-    const { data, error } = await _supabase.from(table).select('*');
-    if (error) { console.error('Supabase fetch error (' + table + '):', error); return []; }
-    return data || [];
+    try {
+      const { data, error } = await _supabase.from(table).select('*');
+      if (error) { console.error('Supabase fetch error (' + table + '):', error); return []; }
+      return data || [];
+    } catch (e) {
+      console.error('Fetch exception (' + table + '):', e);
+      return [];
+    }
   }
 
   async function _sbUpsert(table, rows) {
     if (!_supabase || !rows || rows.length === 0) return;
-    const { error } = await _supabase.from(table).upsert(rows, { onConflict: 'id' });
-    if (error) console.error('Supabase upsert error (' + table + '):', error);
+    try {
+      const { error } = await _supabase.from(table).upsert(rows, { onConflict: 'id' });
+      if (error) console.error('Supabase upsert error (' + table + '):', error);
+    } catch (e) {
+      console.error('Upsert exception (' + table + '):', e);
+    }
   }
 
   async function _sbUpsertByKey(table, key, rows) {
     if (!_supabase || !rows || rows.length === 0) return;
-    const { error } = await _supabase.from(table).upsert(rows, { onConflict: key });
-    if (error) console.error('Supabase upsert error (' + table + '):', error);
+    try {
+      const { error } = await _supabase.from(table).upsert(rows, { onConflict: key });
+      if (error) console.error('Supabase upsert error (' + table + '):', error);
+    } catch (e) {
+      console.error('UpsertByKey exception (' + table + '):', e);
+    }
   }
 
   async function _sbDelete(table, id) {
     if (!_supabase) return;
-    const { error } = await _supabase.from(table).delete().eq('id', id);
-    if (error) console.error('Supabase delete error (' + table + '):', error);
+    try {
+      const { error } = await _supabase.from(table).delete().eq('id', id);
+      if (error) console.error('Supabase delete error (' + table + '):', error);
+    } catch (e) {
+      console.error('Delete exception (' + table + '):', e);
+    }
   }
 
   async function _sbDeleteAll(table) {
     if (!_supabase) return;
-    const { error } = await _supabase.from(table).delete().neq('id', -999);
-    if (error) console.error('Supabase deleteAll error (' + table + '):', error);
+    try {
+      const { error } = await _supabase.from(table).delete().neq('id', -999);
+      if (error) console.error('Supabase deleteAll error (' + table + '):', error);
+    } catch (e) {
+      console.error('DeleteAll exception (' + table + '):', e);
+    }
   }
 
   async function _sbGetSeq(nome) {
     if (!_supabase) return 1;
-    const { data } = await _supabase.from('sequencias').select('valor').eq('nome', nome).single();
-    return data ? data.valor : 1;
+    try {
+      const { data, error } = await _supabase.from('sequencias').select('valor').eq('nome', nome).maybeSingle();
+      if (error) console.error('Error fetching sequence:', error);
+      return data ? data.valor : 1;
+    } catch (e) {
+      console.error('GetSeq exception:', e);
+      return 1;
+    }
   }
 
   async function _sbSetSeq(nome, valor) {
     if (!_supabase) return;
-    await _supabase.from('sequencias').upsert({ nome, valor }, { onConflict: 'nome' });
+    try {
+      await _supabase.from('sequencias').upsert({ nome, valor }, { onConflict: 'nome' });
+    } catch (e) {
+      console.error('SetSeq exception:', e);
+    }
   }
 
   async function _sbGetConfig(chave) {
     if (!_supabase) return null;
-    const { data } = await _supabase.from('configuracoes').select('valor').eq('chave', chave).single();
-    return data ? data.valor : null;
+    try {
+      const { data, error } = await _supabase.from('configuracoes').select('valor').eq('chave', chave).maybeSingle();
+      if (error) console.error('Error fetching config (' + chave + '):', error);
+      return data ? data.valor : null;
+    } catch (e) {
+      console.error('GetConfig exception:', e);
+      return null;
+    }
   }
 
   async function _sbSetConfig(chave, valor) {
     if (!_supabase) return;
-    await _supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' });
+    try {
+      await _supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' });
+    } catch (e) {
+      console.error('SetConfig exception:', e);
+    }
   }
 
-  // ── Converter OS do formato app para formato Supabase ──
   function _osToRow(os) {
     return {
       id: os.id,
@@ -1637,14 +1663,12 @@
       checklist: row.checklist || {},
       historico: row.historico || [],
     };
-    // Restaurar campos extras
     if (row.dados_extras && typeof row.dados_extras === 'object') {
       Object.assign(os, row.dados_extras);
     }
     return os;
   }
 
-  // ── Converter Lançamento ──
   function _lancToRow(l) {
     return {
       id: l.id,
@@ -1675,7 +1699,6 @@
     };
   }
 
-  // ── Converter Venda ──
   function _vendaToRow(v) {
     return {
       id: v.id,
@@ -1702,7 +1725,6 @@
     };
   }
 
-  // ── Converter Produto ──
   function _prodToRow(p) {
     return {
       id: p.id,
@@ -1727,10 +1749,6 @@
     };
   }
 
-  // ══════════════════════════════════════════════════════════
-  // ── INICIALIZAÇÃO — Carregar dados do Supabase ──
-  // ══════════════════════════════════════════════════════════
-
   async function _initSupabase() {
     console.log('🔍 [_initSupabase] Iniciando...');
     if (!_useSupabase) {
@@ -1752,37 +1770,28 @@
                           localStorage.getItem('imperaCellEstoque');
       console.log('🔍 [_initSupabase] Possui dados locais para migrar?', !!hasLocalData);
 
-      console.log('🔍 [_initSupabase] Buscando dados do Supabase em paralelo...');
-      
-      // Vamos buscar um por um para descobrir qual chamada está travando (se for o caso)
-      console.log('🔍 [_initSupabase] Buscando ordens...');
+      console.log('🔍 [_initSupabase] Buscando dados do Supabase...');
       const ordensRows = await _sbFetch('ordens');
       console.log('🔍 [_initSupabase] Ordens carregadas:', ordensRows.length);
 
-      console.log('🔍 [_initSupabase] Buscando lancamentos...');
       const lancRows = await _sbFetch('lancamentos');
       console.log('🔍 [_initSupabase] Lancamentos carregados:', lancRows.length);
 
-      console.log('🔍 [_initSupabase] Buscando vendas...');
       const vendasRows = await _sbFetch('vendas');
       console.log('🔍 [_initSupabase] Vendas carregadas:', vendasRows.length);
 
-      console.log('🔍 [_initSupabase] Buscando caixas...');
       const caixasRows = await _sbFetch('caixas');
       console.log('🔍 [_initSupabase] Caixas carregadas:', caixasRows.length);
 
-      console.log('🔍 [_initSupabase] Buscando estoque...');
       const estoqueRows = await _sbFetch('estoque');
       console.log('🔍 [_initSupabase] Estoque carregado:', estoqueRows.length);
 
-      console.log('🔍 [_initSupabase] Buscando sequencias...');
       const seqOrdens = await _sbGetSeq('ordens');
       const seqLanc = await _sbGetSeq('lancamentos');
       const seqVendas = await _sbGetSeq('vendas');
       const seqEstoque = await _sbGetSeq('estoque');
       console.log('🔍 [_initSupabase] Sequencias carregadas:', { seqOrdens, seqLanc, seqVendas, seqEstoque });
 
-      console.log('🔍 [_initSupabase] Buscando configuracoes...');
       const precosConf = await _sbGetConfig('precos');
       const modelosConf = await _sbGetConfig('modelos');
       const renomesConf = await _sbGetConfig('renomes');
@@ -1798,7 +1807,6 @@
         return;
       }
 
-      console.log('🔍 [_initSupabase] Populando cache...');
       _cache.ordens = {
         ordens: ordensRows.map(_rowToOs),
         nextId: seqOrdens,
@@ -1837,21 +1845,17 @@
 
   async function _migrateToSupabase() {
     console.log('🔄 Iniciando migração localStorage → Supabase...');
-
     try {
-      // OS
-      const localData = JSON.parse(localStorage.getItem(DB_KEY) || '{"ordens":[],"nextId":1}');
+      const localData = JSON.parse(localStorage.getItem('imperaCellOS') || '{"ordens":[],"nextId":1}');
       if (localData.ordens.length > 0) {
         const rows = localData.ordens.map(_osToRow);
-        // Inserir em lotes de 50
         for (let i = 0; i < rows.length; i += 50) {
           await _sbUpsert('ordens', rows.slice(i, i + 50));
         }
         await _sbSetSeq('ordens', localData.nextId);
       }
 
-      // Financeiro
-      const localFin = JSON.parse(localStorage.getItem(FIN_KEY) || '{"lancamentos":[],"nextId":1}');
+      const localFin = JSON.parse(localStorage.getItem('imperaCellFin') || '{"lancamentos":[],"nextId":1}');
       if (localFin.lancamentos.length > 0) {
         const rows = localFin.lancamentos.map(_lancToRow);
         for (let i = 0; i < rows.length; i += 50) {
@@ -1860,8 +1864,7 @@
         await _sbSetSeq('lancamentos', localFin.nextId);
       }
 
-      // Vendas
-      const localVendas = JSON.parse(localStorage.getItem(VENDAS_KEY) || '{"vendas":[],"caixas":{},"nextId":1}');
+      const localVendas = JSON.parse(localStorage.getItem('imperaCellVendas') || '{"vendas":[],"caixas":{},"nextId":1}');
       if (localVendas.vendas.length > 0) {
         const rows = localVendas.vendas.map(_vendaToRow);
         for (let i = 0; i < rows.length; i += 50) {
@@ -1869,7 +1872,6 @@
         }
         await _sbSetSeq('vendas', localVendas.nextId);
       }
-      // Caixas
       if (localVendas.caixas && Object.keys(localVendas.caixas).length > 0) {
         const caixaRows = Object.entries(localVendas.caixas).map(([data, val]) => ({
           data,
@@ -1879,8 +1881,7 @@
         await _sbUpsertByKey('caixas', 'data', caixaRows);
       }
 
-      // Estoque
-      const localEstoque = JSON.parse(localStorage.getItem(ESTOQUE_KEY) || '{"produtos":[],"nextId":1}');
+      const localEstoque = JSON.parse(localStorage.getItem('imperaCellEstoque') || '{"produtos":[],"nextId":1}');
       if (localEstoque.produtos.length > 0) {
         const rows = localEstoque.produtos.map(_prodToRow);
         for (let i = 0; i < rows.length; i += 50) {
@@ -1889,63 +1890,42 @@
         await _sbSetSeq('estoque', localEstoque.nextId);
       }
 
-      // Preços
       const localPrecos = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.precos)) : JSON.parse(localStorage.getItem('imperaCellPrecos') || '{}'));
       if (Object.keys(localPrecos).length > 0) {
         await _sbSetConfig('precos', localPrecos);
       }
 
-      // Modelos
       const localModelos = JSON.parse(localStorage.getItem('imperaCellModelos') || '{}');
       if (Object.keys(localModelos).length > 0) {
         await _sbSetConfig('modelos', localModelos);
       }
 
-      // Renomes
       const localRenomes = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.renomes)) : JSON.parse(localStorage.getItem('imperaCellRenomesModelo') || '{}'));
       if (Object.keys(localRenomes).length > 0) {
         await _sbSetConfig('renomes', localRenomes);
       }
 
       console.log('✅ Migração concluída!');
-
-      // Recarregar do Supabase para garantir consistência
       _cache._loaded = false;
       await _initSupabase();
-
     } catch (err) {
       console.error('Erro na migração:', err);
-      alert('Erro ao migrar dados para a nuvem. Os dados locais foram mantidos. Verifique o console (F12).');
-      document.getElementById('appLoading').style.display = 'none';
+      alert('Erro ao migrar dados para a nuvem. Os dados locais foram mantidos.');
+      const loader = document.getElementById('appLoading');
+      if (loader) loader.style.display = 'none';
     }
   }
 
-  // ══════════════════════════════════════════════════════════
-  // ── SYNC HELPERS — Salvar alterações no Supabase em background ──
-  // ══════════════════════════════════════════════════════════
-
   function _syncOrdens(data) {
     if (!_useSupabase) return;
-    // Sync completo — upsert todas as OS
     const rows = data.ordens.map(_osToRow);
     _sbUpsert('ordens', rows).catch(e => console.error('Sync ordens error:', e));
     _sbSetSeq('ordens', data.nextId).catch(e => console.error('Sync seq ordens error:', e));
   }
 
-  function _syncOrdensOne(os) {
-    if (!_useSupabase) return;
-    _sbUpsert('ordens', [_osToRow(os)]).catch(e => console.error('Sync OS error:', e));
-  }
-
-  function _syncDeleteOrdem(id) {
-    if (!_useSupabase) return;
-    _sbDelete('ordens', id).catch(e => console.error('Sync delete OS error:', e));
-  }
-
   function _syncFinanceiro(data) {
     if (!_useSupabase) return;
     const rows = data.lancamentos.map(_lancToRow);
-    // Deletar tudo e reinserir (para refletir exclusões)
     _sbDeleteAll('lancamentos').then(() => {
       if (rows.length > 0) {
         for (let i = 0; i < rows.length; i += 50) {
@@ -1966,7 +1946,6 @@
         }
       }
     }).catch(e => console.error('Sync vendas error:', e));
-    // Caixas
     if (data.caixas) {
       const caixaRows = Object.entries(data.caixas).map(([dt, val]) => ({
         data: dt,
@@ -1990,11 +1969,6 @@
     }).catch(e => console.error('Sync estoque error:', e));
     _sbSetSeq('estoque', data.nextId).catch(e => console.error('Sync seq estoque error:', e));
   }
-
-  // ══════════════════════════════════════════════════════════
-  // ── FIM DA CAMADA SUPABASE ──
-  // ══════════════════════════════════════════════════════════
-
 
   // ── Modelos base (atualizados até 2026) ──
   const MODELOS_BASE = {
@@ -2091,7 +2065,6 @@
   // ── Modelos customizados (salvos pelo usuário) ──
   const CUSTOM_KEY = 'imperaCellModelos';
   function getCustomModelos() {
-    if (_useSupabase && _cache._loaded) return JSON.parse(JSON.stringify(_cache.modelos));
     try { return JSON.parse(localStorage.getItem(CUSTOM_KEY)) || {}; }
     catch { return {}; }
   }
@@ -2192,9 +2165,6 @@
   const DB_KEY = 'imperaCellOS';
 
   function getData() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.ordens)); // deep copy
-    }
     try { return JSON.parse(localStorage.getItem(DB_KEY)) || { ordens: [], nextId: 1 }; }
     catch { return { ordens: [], nextId: 1 }; }
   }
@@ -3148,9 +3118,6 @@
   let prodEditId = null;
 
   function getEstoque() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.estoque));
-    }
     try { return JSON.parse(localStorage.getItem(ESTOQUE_KEY)) || { produtos: [], nextId: 1 }; }
     catch { return { produtos: [], nextId: 1 }; }
   }
@@ -3275,9 +3242,6 @@
   const VENDAS_KEY = 'imperaCellVendas';
 
   function getVendas() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.vendas));
-    }
     try { return JSON.parse(localStorage.getItem(VENDAS_KEY)) || { vendas: [], caixas: {}, nextId: 1 }; }
     catch { return { vendas: [], caixas: {}, nextId: 1 }; }
   }
@@ -3479,9 +3443,6 @@
   const FIN_KEY = 'imperaCellFin';
 
   function getFin() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.financeiro));
-    }
     try { return JSON.parse(localStorage.getItem(FIN_KEY)) || { lancamentos: [], nextId: 1 }; }
     catch { return { lancamentos: [], nextId: 1 }; }
   }
@@ -4826,6 +4787,14 @@
   renderDashboard();
   // Inicializar canvas de senha na primeira carga
   setTimeout(() => { window._senhaPatternInit && window._senhaPatternInit(); }, 100);
+
+
+  // ── Inicializar Supabase ao carregar ──
+  window.addEventListener('DOMContentLoaded', async () => {
+    await _initSupabase();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
+  });
 </script>
 </body>
 </html>
