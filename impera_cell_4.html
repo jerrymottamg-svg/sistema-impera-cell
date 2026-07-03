@@ -1732,47 +1732,73 @@
   // ══════════════════════════════════════════════════════════
 
   async function _initSupabase() {
+    console.log('🔍 [_initSupabase] Iniciando...');
     if (!_useSupabase) {
-      console.log('⚠️ Supabase não configurado — usando localStorage');
-      document.getElementById('appLoading').style.display = 'none';
+      console.log('⚠️ [_initSupabase] Supabase não configurado — usando localStorage');
+      const loader = document.getElementById('appLoading');
+      if (loader) loader.style.display = 'none';
       return;
     }
 
     try {
-      document.getElementById('loadingMsg').textContent = 'Carregando dados...';
+      console.log('🔍 [_initSupabase] Conectado ao Supabase, alterando texto de loading...');
+      const msgEl = document.getElementById('loadingMsg');
+      if (msgEl) msgEl.textContent = 'Carregando dados...';
 
-      // Verificar se há dados no localStorage para migrar
+      console.log('🔍 [_initSupabase] Verificando dados locais...');
       const hasLocalData = localStorage.getItem('imperaCellOS') ||
                           localStorage.getItem('imperaCellFin') ||
                           localStorage.getItem('imperaCellVendas') ||
                           localStorage.getItem('imperaCellEstoque');
+      console.log('🔍 [_initSupabase] Possui dados locais para migrar?', !!hasLocalData);
 
-      // Carregar do Supabase em paralelo
-      const [ordensRows, lancRows, vendasRows, caixasRows, estoqueRows, seqOrdens, seqLanc, seqVendas, seqEstoque, precosConf, modelosConf, renomesConf] = await Promise.all([
-        _sbFetch('ordens'),
-        _sbFetch('lancamentos'),
-        _sbFetch('vendas'),
-        _sbFetch('caixas'),
-        _sbFetch('estoque'),
-        _sbGetSeq('ordens'),
-        _sbGetSeq('lancamentos'),
-        _sbGetSeq('vendas'),
-        _sbGetSeq('estoque'),
-        _sbGetConfig('precos'),
-        _sbGetConfig('modelos'),
-        _sbGetConfig('renomes'),
-      ]);
+      console.log('🔍 [_initSupabase] Buscando dados do Supabase em paralelo...');
+      
+      // Vamos buscar um por um para descobrir qual chamada está travando (se for o caso)
+      console.log('🔍 [_initSupabase] Buscando ordens...');
+      const ordensRows = await _sbFetch('ordens');
+      console.log('🔍 [_initSupabase] Ordens carregadas:', ordensRows.length);
+
+      console.log('🔍 [_initSupabase] Buscando lancamentos...');
+      const lancRows = await _sbFetch('lancamentos');
+      console.log('🔍 [_initSupabase] Lancamentos carregados:', lancRows.length);
+
+      console.log('🔍 [_initSupabase] Buscando vendas...');
+      const vendasRows = await _sbFetch('vendas');
+      console.log('🔍 [_initSupabase] Vendas carregadas:', vendasRows.length);
+
+      console.log('🔍 [_initSupabase] Buscando caixas...');
+      const caixasRows = await _sbFetch('caixas');
+      console.log('🔍 [_initSupabase] Caixas carregadas:', caixasRows.length);
+
+      console.log('🔍 [_initSupabase] Buscando estoque...');
+      const estoqueRows = await _sbFetch('estoque');
+      console.log('🔍 [_initSupabase] Estoque carregado:', estoqueRows.length);
+
+      console.log('🔍 [_initSupabase] Buscando sequencias...');
+      const seqOrdens = await _sbGetSeq('ordens');
+      const seqLanc = await _sbGetSeq('lancamentos');
+      const seqVendas = await _sbGetSeq('vendas');
+      const seqEstoque = await _sbGetSeq('estoque');
+      console.log('🔍 [_initSupabase] Sequencias carregadas:', { seqOrdens, seqLanc, seqVendas, seqEstoque });
+
+      console.log('🔍 [_initSupabase] Buscando configuracoes...');
+      const precosConf = await _sbGetConfig('precos');
+      const modelosConf = await _sbGetConfig('modelos');
+      const renomesConf = await _sbGetConfig('renomes');
+      console.log('🔍 [_initSupabase] Configuracoes carregadas');
 
       const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
+      console.log('🔍 [_initSupabase] Supabase possui dados?', supabaseHasData);
 
-      // Se Supabase está vazio e localStorage tem dados → migrar
       if (!supabaseHasData && hasLocalData) {
-        document.getElementById('loadingMsg').textContent = 'Migrando dados para a nuvem...';
+        console.log('🔍 [_initSupabase] Supabase vazio e possui dados locais. Iniciando migração...');
+        if (msgEl) msgEl.textContent = 'Migrando dados para a nuvem...';
         await _migrateToSupabase();
-        return; // _migrateToSupabase já inicializa o cache
+        return;
       }
 
-      // Popular cache com dados do Supabase
+      console.log('🔍 [_initSupabase] Populando cache...');
       _cache.ordens = {
         ordens: ordensRows.map(_rowToOs),
         nextId: seqOrdens,
@@ -1797,22 +1823,18 @@
       _cache.renomes = renomesConf || {};
       _cache._loaded = true;
 
-      console.log('✅ Dados carregados do Supabase:', {
-        ordens: _cache.ordens.ordens.length,
-        lancamentos: _cache.financeiro.lancamentos.length,
-        vendas: _cache.vendas.vendas.length,
-        estoque: _cache.estoque.produtos.length,
-      });
+      console.log('✅ [_initSupabase] Inicialização concluída com sucesso!');
 
     } catch (err) {
-      console.error('Erro ao carregar Supabase:', err);
-      console.log('⚠️ Fallback para localStorage');
+      console.error('❌ [_initSupabase] Erro crítico ao carregar Supabase:', err);
+      console.log('⚠️ [_initSupabase] Usando fallback para localStorage');
+    } finally {
+      console.log('🔍 [_initSupabase] Escondendo loader...');
+      const loader = document.getElementById('appLoading');
+      if (loader) loader.style.display = 'none';
     }
-
-    document.getElementById('appLoading').style.display = 'none';
   }
 
-  // ── Migração do localStorage para Supabase ──
   async function _migrateToSupabase() {
     console.log('🔄 Iniciando migração localStorage → Supabase...');
 
