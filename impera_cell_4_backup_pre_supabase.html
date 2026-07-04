@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -518,14 +518,6 @@
       .backup-bar { padding: 7px 16px; }
     }
 
-    /* ── Login Overlay ── */
-    #loginOverlay { position: fixed; inset: 0; z-index: 100000; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .login-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-    .login-box h2 { color: var(--text); margin-bottom: 24px; font-weight: 500; font-size: 20px; }
-    .login-box input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; }
-    .login-box button { width: 100%; padding: 12px; border-radius: 6px; border: none; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .login-box button:hover { opacity: 0.9; }
-
     /* ── Print ── */
     @media print {
       body * { visibility: hidden; }
@@ -533,26 +525,8 @@
       .print-os { position: absolute; top: 0; left: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
     }
   </style>
-  <!-- Supabase JS Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- Loading overlay durante inicialização -->
-  <div id="appLoading" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-    <div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
-    <span style="color:var(--text-muted);font-size:14px" id="loadingMsg">Conectando ao servidor...</span>
-  </div>
-  <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-
-<!-- LOGIN OVERLAY -->
-<div id="loginOverlay" style="display:none;">
-  <div class="login-box">
-    <h2>Acesso ao Sistema</h2>
-    <input type="text" id="loginUsername" placeholder="Usuário" autocomplete="off" />
-    <input type="password" id="loginPassword" placeholder="Senha ou PIN" autocomplete="off" onkeydown="if(event.key==='Enter') fazerLogin()" />
-    <button onclick="fazerLogin()">Entrar</button>
-  </div>
-</div>
 
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
@@ -565,10 +539,6 @@
   </div>
   <div class="header-right">
     <span class="date-display" id="headerDate"></span>
-  </div>
-  <div id="userInfoHeader" style="display:none; align-items:center; gap:16px;">
-    <span style="color:var(--text-muted); font-size:14px;">Olá, <strong id="loggedUserName" style="color:var(--text)"></strong></span>
-    <button class="btn btn-sm btn-danger" onclick="fazerLogout()">Sair</button>
   </div>
 </header>
 
@@ -666,7 +636,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Hora</th><th>Descrição</th><th>Qtd</th><th>Preço Unit.</th><th>Forma Pgto</th><th>Vendedor</th><th>Total</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Hora</th><th>Descrição</th><th>Qtd</th><th>Preço Unit.</th><th>Forma Pgto</th><th>Total</th><th>Ações</th></tr></thead>
           <tbody id="vendasBody"></tbody>
         </table>
       </div>
@@ -923,16 +893,6 @@
           <label>Serviço a executar / Observações internas</label>
           <textarea id="observacoes" placeholder="Descreva o serviço, peças necessárias, observações técnicas..."></textarea>
         </div>
-        <div class="form-group full">
-          <label>Fotos do Aparelho / Serviço</label>
-          <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
-            <label class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;max-width:180px;justify-content:center;padding:8px 16px;font-size:13px">
-              📷 Adicionar Fotos
-              <input type="file" id="osFotosInput" accept="image/*" multiple style="display:none" onchange="manipularFotosOS(event)" />
-            </label>
-            <div id="osFotosPreviewContainer" style="display:flex;flex-wrap:wrap;gap:12px"></div>
-          </div>
-        </div>
       </div>
 
       <div class="actions-row">
@@ -1075,7 +1035,6 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Período:</span>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="btn-periodo" data-periodo="hoje" onclick="setPeriodo(this)">Hoje</button>
             <button class="btn-periodo active" data-periodo="mes-atual" onclick="setPeriodo(this)">Este mês</button>
             <button class="btn-periodo" data-periodo="mes-anterior" onclick="setPeriodo(this)">Mês anterior</button>
             <button class="btn-periodo" data-periodo="trimestre" onclick="setPeriodo(this)">Últimos 3 meses</button>
@@ -1489,574 +1448,6 @@
 <div class="print-os" id="printArea"></div>
 
 <script>
-
-  // ══════════════════════════════════════════════════════════
-  // ── SUPABASE — Camada de Persistência na Nuvem ──
-  // ══════════════════════════════════════════════════════════
-
-  const SUPABASE_URL  = 'https://egrrknwvdbkrnstaacmo.supabase.co';
-  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVncnJrbnd2ZGJrcm5zdGFhY21vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTAwMjksImV4cCI6MjA5ODY2NjAyOX0.W6MNhF4P_bPxWop15cxMPr0_zdqCzSj954HM8S4-LqM';
-
-  const _supabase = (typeof supabase !== 'undefined')
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-    : null;
-
-  const _useSupabase = !!_supabase;
-
-  const _cache = {
-    ordens:       { ordens: [], nextId: 1 },
-    financeiro:   { lancamentos: [], nextId: 1 },
-    vendas:       { vendas: [], caixas: {}, nextId: 1 },
-    estoque:      { produtos: [], nextId: 1 },
-    precos:       {},
-    modelos:      {},
-    renomes:      {},
-    _loaded:      false,
-  };
-
-  async function _sbFetch(table) {
-    if (!_supabase) return [];
-    try {
-      const { data, error } = await _supabase.from(table).select('*');
-      if (error) { console.error('Supabase fetch error (' + table + '):', error); return []; }
-      return data || [];
-    } catch (e) {
-      console.error('Fetch exception (' + table + '):', e);
-      return [];
-    }
-  }
-
-  async function _sbUpsert(table, rows) {
-    if (!_supabase || !rows || rows.length === 0) return;
-    try {
-      const { error } = await _supabase.from(table).upsert(rows, { onConflict: 'id' });
-      if (error) console.error('Supabase upsert error (' + table + '):', error);
-    } catch (e) {
-      console.error('Upsert exception (' + table + '):', e);
-    }
-  }
-
-  async function _sbUpsertByKey(table, key, rows) {
-    if (!_supabase || !rows || rows.length === 0) return;
-    try {
-      const { error } = await _supabase.from(table).upsert(rows, { onConflict: key });
-      if (error) console.error('Supabase upsert error (' + table + '):', error);
-    } catch (e) {
-      console.error('UpsertByKey exception (' + table + '):', e);
-    }
-  }
-
-  async function _sbDelete(table, id) {
-    if (!_supabase) return;
-    try {
-      const { error } = await _supabase.from(table).delete().eq('id', id);
-      if (error) console.error('Supabase delete error (' + table + '):', error);
-    } catch (e) {
-      console.error('Delete exception (' + table + '):', e);
-    }
-  }
-
-  async function _sbDeleteAll(table) {
-    if (!_supabase) return;
-    try {
-      const { error } = await _supabase.from(table).delete().neq('id', -999);
-      if (error) console.error('Supabase deleteAll error (' + table + '):', error);
-    } catch (e) {
-      console.error('DeleteAll exception (' + table + '):', e);
-    }
-  }
-
-  async function _sbGetSeq(nome) {
-    if (!_supabase) return 1;
-    try {
-      const { data, error } = await _supabase.from('sequencias').select('valor').eq('nome', nome).maybeSingle();
-      if (error) console.error('Error fetching sequence:', error);
-      return data ? data.valor : 1;
-    } catch (e) {
-      console.error('GetSeq exception:', e);
-      return 1;
-    }
-  }
-
-  async function _sbSetSeq(nome, valor) {
-    if (!_supabase) return;
-    try {
-      await _supabase.from('sequencias').upsert({ nome, valor }, { onConflict: 'nome' });
-    } catch (e) {
-      console.error('SetSeq exception:', e);
-    }
-  }
-
-  async function _sbGetConfig(chave) {
-    if (!_supabase) return null;
-    try {
-      const { data, error } = await _supabase.from('configuracoes').select('valor').eq('chave', chave).maybeSingle();
-      if (error) console.error('Error fetching config (' + chave + '):', error);
-      return data ? data.valor : null;
-    } catch (e) {
-      console.error('GetConfig exception:', e);
-      return null;
-    }
-  }
-
-  async function _sbSetConfig(chave, valor) {
-    if (!_supabase) return;
-    try {
-      await _supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' });
-    } catch (e) {
-      console.error('SetConfig exception:', e);
-    }
-  }
-
-  function _osToRow(os) {
-    return {
-      id: os.id,
-      data_entrada: os.dataEntrada || '',
-      nome_cliente: os.nomeCliente || '',
-      telefone: os.telefone || '',
-      cpf: os.cpf || '',
-      rg: os.rg || '',
-      endereco: os.endereco || '',
-      bairro: os.bairro || '',
-      cidade: os.cidade || '',
-      email: os.email || '',
-      tecnico: os.tecnico || '',
-      marca: os.marca || '',
-      modelo_aparelho: os.modeloAparelho || '',
-      imei: os.imei || '',
-      imei2: os.imei2 || '',
-      cor: os.cor || '',
-      acessorios: os.acessorios || '',
-      senha: os.senha || '',
-      senha_tipo: os.senhaTipo || '',
-      senha_seq: os.senhaSeq || [],
-      tipo_manutencao: os.tipoManutencao || '',
-      defeito_relatado: os.defeitoRelatado || '',
-      servico_realizado: os.servicoRealizado || '',
-      observacoes: os.observacoes || '',
-      valor_servico: parseFloat(os.valorServico) || 0,
-      custo_servico: parseFloat(os.custoServico) || 0,
-      status: os.status || 'Aguardando',
-      pago: !!os.pago,
-      forma_pagamento: os.formaPagamento || '',
-      data_pagamento: os.dataPagamento || '',
-      valor_pago: parseFloat(os.valorPago) || 0,
-      estetica: os.estetica || {},
-      defeitos: os.defeitos || {},
-      checklist: os.checklist || {},
-      historico: os.historico || [],
-      dados_extras: _osExtras(os),
-    };
-  }
-
-  function _osExtras(os) {
-    const known = ['id','dataEntrada','nomeCliente','telefone','cpf','rg','endereco','bairro','cidade','email','tecnico','marca','modeloAparelho','imei','imei2','cor','acessorios','senha','senhaTipo','senhaSeq','tipoManutencao','defeitoRelatado','servicoRealizado','observacoes','valorServico','custoServico','status','pago','formaPagamento','dataPagamento','valorPago','estetica','defeitos','checklist','historico'];
-    const extras = {};
-    for (const k of Object.keys(os)) {
-      if (!known.includes(k)) extras[k] = os[k];
-    }
-    return extras;
-  }
-
-  function _rowToOs(row) {
-    const os = {
-      id: row.id,
-      dataEntrada: row.data_entrada || '',
-      nomeCliente: row.nome_cliente || '',
-      telefone: row.telefone || '',
-      cpf: row.cpf || '',
-      rg: row.rg || '',
-      endereco: row.endereco || '',
-      bairro: row.bairro || '',
-      cidade: row.cidade || '',
-      email: row.email || '',
-      tecnico: row.tecnico || '',
-      marca: row.marca || '',
-      modeloAparelho: row.modelo_aparelho || '',
-      imei: row.imei || '',
-      imei2: row.imei2 || '',
-      cor: row.cor || '',
-      acessorios: row.acessorios || '',
-      senha: row.senha || '',
-      senhaTipo: row.senha_tipo || '',
-      senhaSeq: row.senha_seq || [],
-      tipoManutencao: row.tipo_manutencao || '',
-      defeitoRelatado: row.defeito_relatado || '',
-      servicoRealizado: row.servico_realizado || '',
-      observacoes: row.observacoes || '',
-      valorServico: row.valor_servico || 0,
-      custoServico: row.custo_servico || 0,
-      status: row.status || 'Aguardando',
-      pago: !!row.pago,
-      formaPagamento: row.forma_pagamento || '',
-      dataPagamento: row.data_pagamento || '',
-      valorPago: row.valor_pago || 0,
-      estetica: row.estetica || {},
-      defeitos: row.defeitos || {},
-      checklist: row.checklist || {},
-      historico: row.historico || [],
-    };
-    if (row.dados_extras && typeof row.dados_extras === 'object') {
-      Object.assign(os, row.dados_extras);
-    }
-    return os;
-  }
-
-  function _lancToRow(l) {
-    return {
-      id: l.id,
-      data: l.data || '',
-      descricao: l.desc || '',
-      categoria: l.categoria || '',
-      tipo: l.tipo || 'entrada',
-      valor: parseFloat(l.valor) || 0,
-      custo: parseFloat(l.custo) || 0,
-      forma_pagamento: l.formaPagamento || '',
-      os_id: l.osId || null,
-      automatico: !!l.automatico,
-    };
-  }
-
-  function _rowToLanc(row) {
-    return {
-      id: row.id,
-      data: row.data || '',
-      desc: row.descricao || '',
-      categoria: row.categoria || '',
-      tipo: row.tipo || 'entrada',
-      valor: parseFloat(row.valor) || 0,
-      custo: parseFloat(row.custo) || 0,
-      formaPagamento: row.forma_pagamento || '',
-      osId: row.os_id || null,
-      automatico: !!row.automatico,
-    };
-  }
-
-  function _vendaToRow(v) {
-    return {
-      id: v.id,
-      data: v.data || '',
-      hora: v.hora || '',
-      descricao: v.descricao || '',
-      preco: parseFloat(v.preco) || 0,
-      quantidade: parseInt(v.quantidade) || 1,
-      total: parseFloat(v.total) || 0,
-      forma_pagamento: v.formaPagamento || '',
-    };
-  }
-
-  function _rowToVenda(row) {
-    return {
-      id: row.id,
-      data: row.data || '',
-      hora: row.hora || '',
-      descricao: row.descricao || '',
-      preco: parseFloat(row.preco) || 0,
-      quantidade: parseInt(row.quantidade) || 1,
-      total: parseFloat(row.total) || 0,
-      formaPagamento: row.forma_pagamento || '',
-    };
-  }
-
-  function _prodToRow(p) {
-    return {
-      id: p.id,
-      nome: p.nome || '',
-      categoria: p.categoria || '',
-      qtd: parseFloat(p.qtd) || 0,
-      minimo: parseFloat(p.min) || 0,
-      custo: parseFloat(p.custo) || 0,
-      observacoes: p.obs || '',
-    };
-  }
-
-  function _rowToProd(row) {
-    return {
-      id: row.id,
-      nome: row.nome || '',
-      categoria: row.categoria || '',
-      qtd: parseFloat(row.qtd) || 0,
-      min: parseFloat(row.minimo) || 0,
-      custo: parseFloat(row.custo) || 0,
-      obs: row.observacoes || '',
-    };
-  }
-
-  // ── Autenticação e Usuários ──
-  let currentUser = null;
-  const appUsers = [
-    { username: "admin", pin: "1234", role: "admin", name: "Administrador" },
-    { username: "tecnico1", pin: "1111", role: "tecnico", name: "Técnico 1" },
-    { username: "vendedor1", pin: "2222", role: "vendedor", name: "Vendedor 1" }
-  ];
-
-  function checkSession() {
-    const saved = localStorage.getItem('imperaCellUser');
-    if (saved) {
-      currentUser = JSON.parse(saved);
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('userInfoHeader').style.display = 'flex';
-      document.getElementById('loggedUserName').textContent = currentUser.name;
-    } else {
-      currentUser = null;
-      document.getElementById('loginOverlay').style.display = 'flex';
-      document.getElementById('userInfoHeader').style.display = 'none';
-      document.getElementById('loggedUserName').textContent = '';
-    }
-  }
-
-  function fazerLogin() {
-    const userStr = document.getElementById('loginUsername').value.trim();
-    const passStr = document.getElementById('loginPassword').value.trim();
-    if(!userStr || !passStr) {
-      toast("❌ Preencha usuário e senha.");
-      return;
-    }
-    const found = appUsers.find(u => u.username === userStr && u.pin === passStr);
-    if(found) {
-      currentUser = found;
-      localStorage.setItem('imperaCellUser', JSON.stringify(currentUser));
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('userInfoHeader').style.display = 'flex';
-      document.getElementById('loggedUserName').textContent = currentUser.name;
-      toast(`✅ Bem-vindo(a), ${currentUser.name}!`);
-    } else {
-      toast("❌ Usuário ou senha incorretos.");
-    }
-  }
-
-  function fazerLogout() {
-    if(confirm("Deseja realmente sair?")) {
-      currentUser = null;
-      localStorage.removeItem('imperaCellUser');
-      document.getElementById('loginUsername').value = "";
-      document.getElementById('loginPassword').value = "";
-      document.getElementById('loginOverlay').style.display = 'flex';
-      document.getElementById('userInfoHeader').style.display = 'none';
-    }
-  }
-
-  async function _initSupabase() {
-    console.log('🔍 [_initSupabase] Iniciando...');
-    if (!_useSupabase) {
-      console.log('⚠️ [_initSupabase] Supabase não configurado — usando localStorage');
-      const loader = document.getElementById('appLoading');
-      if (loader) loader.style.display = 'none';
-      return;
-    }
-
-    try {
-      console.log('🔍 [_initSupabase] Conectado ao Supabase, alterando texto de loading...');
-      const msgEl = document.getElementById('loadingMsg');
-      if (msgEl) msgEl.textContent = 'Carregando dados...';
-
-      console.log('🔍 [_initSupabase] Verificando dados locais...');
-      const hasLocalData = localStorage.getItem('imperaCellOS') ||
-                          localStorage.getItem('imperaCellFin') ||
-                          localStorage.getItem('imperaCellVendas') ||
-                          localStorage.getItem('imperaCellEstoque');
-      console.log('🔍 [_initSupabase] Possui dados locais para migrar?', !!hasLocalData);
-
-      console.log('🔍 [_initSupabase] Buscando dados do Supabase...');
-      const ordensRows = await _sbFetch('ordens');
-      console.log('🔍 [_initSupabase] Ordens carregadas:', ordensRows.length);
-
-      const lancRows = await _sbFetch('lancamentos');
-      console.log('🔍 [_initSupabase] Lancamentos carregados:', lancRows.length);
-
-      const vendasRows = await _sbFetch('vendas');
-      console.log('🔍 [_initSupabase] Vendas carregadas:', vendasRows.length);
-
-      const caixasRows = await _sbFetch('caixas');
-      console.log('🔍 [_initSupabase] Caixas carregadas:', caixasRows.length);
-
-      const estoqueRows = await _sbFetch('estoque');
-      console.log('🔍 [_initSupabase] Estoque carregado:', estoqueRows.length);
-
-      const seqOrdens = await _sbGetSeq('ordens');
-      const seqLanc = await _sbGetSeq('lancamentos');
-      const seqVendas = await _sbGetSeq('vendas');
-      const seqEstoque = await _sbGetSeq('estoque');
-      console.log('🔍 [_initSupabase] Sequencias carregadas:', { seqOrdens, seqLanc, seqVendas, seqEstoque });
-
-      const precosConf = await _sbGetConfig('precos');
-      const modelosConf = await _sbGetConfig('modelos');
-      const renomesConf = await _sbGetConfig('renomes');
-      console.log('🔍 [_initSupabase] Configuracoes carregadas');
-
-      const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
-      console.log('🔍 [_initSupabase] Supabase possui dados?', supabaseHasData);
-
-      if (!supabaseHasData && hasLocalData) {
-        console.log('🔍 [_initSupabase] Supabase vazio e possui dados locais. Iniciando migração...');
-        if (msgEl) msgEl.textContent = 'Migrando dados para a nuvem...';
-        await _migrateToSupabase();
-        return;
-      }
-
-      _cache.ordens = {
-        ordens: ordensRows.map(_rowToOs),
-        nextId: seqOrdens,
-      };
-      _cache.financeiro = {
-        lancamentos: lancRows.map(_rowToLanc),
-        nextId: seqLanc,
-      };
-      const caixasObj = {};
-      caixasRows.forEach(c => { caixasObj[c.data] = c.dados || {}; caixasObj[c.data].caixaInicial = c.caixa_inicial; });
-      _cache.vendas = {
-        vendas: vendasRows.map(_rowToVenda),
-        caixas: caixasObj,
-        nextId: seqVendas,
-      };
-      _cache.estoque = {
-        produtos: estoqueRows.map(_rowToProd),
-        nextId: seqEstoque,
-      };
-      _cache.precos = precosConf || {};
-      _cache.modelos = modelosConf || {};
-      _cache.renomes = renomesConf || {};
-      _cache._loaded = true;
-
-      console.log('✅ [_initSupabase] Inicialização concluída com sucesso!');
-
-    } catch (err) {
-      console.error('❌ [_initSupabase] Erro crítico ao carregar Supabase:', err);
-      console.log('⚠️ [_initSupabase] Usando fallback para localStorage');
-    } finally {
-      console.log('🔍 [_initSupabase] Escondendo loader...');
-      const loader = document.getElementById('appLoading');
-      if (loader) loader.style.display = 'none';
-    }
-  }
-
-  async function _migrateToSupabase() {
-    console.log('🔄 Iniciando migração localStorage → Supabase...');
-    try {
-      const localData = JSON.parse(localStorage.getItem('imperaCellOS') || '{"ordens":[],"nextId":1}');
-      if (localData.ordens.length > 0) {
-        const rows = localData.ordens.map(_osToRow);
-        for (let i = 0; i < rows.length; i += 50) {
-          await _sbUpsert('ordens', rows.slice(i, i + 50));
-        }
-        await _sbSetSeq('ordens', localData.nextId);
-      }
-
-      const localFin = JSON.parse(localStorage.getItem('imperaCellFin') || '{"lancamentos":[],"nextId":1}');
-      if (localFin.lancamentos.length > 0) {
-        const rows = localFin.lancamentos.map(_lancToRow);
-        for (let i = 0; i < rows.length; i += 50) {
-          await _sbUpsert('lancamentos', rows.slice(i, i + 50));
-        }
-        await _sbSetSeq('lancamentos', localFin.nextId);
-      }
-
-      const localVendas = JSON.parse(localStorage.getItem('imperaCellVendas') || '{"vendas":[],"caixas":{},"nextId":1}');
-      if (localVendas.vendas.length > 0) {
-        const rows = localVendas.vendas.map(_vendaToRow);
-        for (let i = 0; i < rows.length; i += 50) {
-          await _sbUpsert('vendas', rows.slice(i, i + 50));
-        }
-        await _sbSetSeq('vendas', localVendas.nextId);
-      }
-      if (localVendas.caixas && Object.keys(localVendas.caixas).length > 0) {
-        const caixaRows = Object.entries(localVendas.caixas).map(([data, val]) => ({
-          data,
-          caixa_inicial: val.caixaInicial || 0,
-          dados: val,
-        }));
-        await _sbUpsertByKey('caixas', 'data', caixaRows);
-      }
-
-      const localEstoque = JSON.parse(localStorage.getItem('imperaCellEstoque') || '{"produtos":[],"nextId":1}');
-      if (localEstoque.produtos.length > 0) {
-        const rows = localEstoque.produtos.map(_prodToRow);
-        for (let i = 0; i < rows.length; i += 50) {
-          await _sbUpsert('estoque', rows.slice(i, i + 50));
-        }
-        await _sbSetSeq('estoque', localEstoque.nextId);
-      }
-
-      const localPrecos = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.precos)) : JSON.parse(localStorage.getItem('imperaCellPrecos') || '{}'));
-      if (Object.keys(localPrecos).length > 0) {
-        await _sbSetConfig('precos', localPrecos);
-      }
-
-      const localModelos = JSON.parse(localStorage.getItem('imperaCellModelos') || '{}');
-      if (Object.keys(localModelos).length > 0) {
-        await _sbSetConfig('modelos', localModelos);
-      }
-
-      const localRenomes = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.renomes)) : JSON.parse(localStorage.getItem('imperaCellRenomesModelo') || '{}'));
-      if (Object.keys(localRenomes).length > 0) {
-        await _sbSetConfig('renomes', localRenomes);
-      }
-
-      console.log('✅ Migração concluída!');
-      _cache._loaded = false;
-      await _initSupabase();
-    } catch (err) {
-      console.error('Erro na migração:', err);
-      alert('Erro ao migrar dados para a nuvem. Os dados locais foram mantidos.');
-      const loader = document.getElementById('appLoading');
-      if (loader) loader.style.display = 'none';
-    }
-  }
-
-  function _syncOrdens(data) {
-    if (!_useSupabase) return;
-    const rows = data.ordens.map(_osToRow);
-    _sbUpsert('ordens', rows).catch(e => console.error('Sync ordens error:', e));
-    _sbSetSeq('ordens', data.nextId).catch(e => console.error('Sync seq ordens error:', e));
-  }
-
-  function _syncFinanceiro(data) {
-    if (!_useSupabase) return;
-    const rows = data.lancamentos.map(_lancToRow);
-    _sbDeleteAll('lancamentos').then(() => {
-      if (rows.length > 0) {
-        for (let i = 0; i < rows.length; i += 50) {
-          _sbUpsert('lancamentos', rows.slice(i, i + 50));
-        }
-      }
-    }).catch(e => console.error('Sync financeiro error:', e));
-    _sbSetSeq('lancamentos', data.nextId).catch(e => console.error('Sync seq lanc error:', e));
-  }
-
-  function _syncVendas(data) {
-    if (!_useSupabase) return;
-    const rows = data.vendas.map(_vendaToRow);
-    _sbDeleteAll('vendas').then(() => {
-      if (rows.length > 0) {
-        for (let i = 0; i < rows.length; i += 50) {
-          _sbUpsert('vendas', rows.slice(i, i + 50));
-        }
-      }
-    }).catch(e => console.error('Sync vendas error:', e));
-    if (data.caixas) {
-      const caixaRows = Object.entries(data.caixas).map(([dt, val]) => ({
-        data: dt,
-        caixa_inicial: val.caixaInicial || 0,
-        dados: val,
-      }));
-      if (caixaRows.length > 0) _sbUpsertByKey('caixas', 'data', caixaRows);
-    }
-    _sbSetSeq('vendas', data.nextId).catch(e => console.error('Sync seq vendas error:', e));
-  }
-
-  function _syncEstoque(data) {
-    if (!_useSupabase) return;
-    const rows = data.produtos.map(_prodToRow);
-    _sbDeleteAll('estoque').then(() => {
-      if (rows.length > 0) {
-        for (let i = 0; i < rows.length; i += 50) {
-          _sbUpsert('estoque', rows.slice(i, i + 50));
-        }
-      }
-    }).catch(e => console.error('Sync estoque error:', e));
-    _sbSetSeq('estoque', data.nextId).catch(e => console.error('Sync seq estoque error:', e));
-  }
-
   // ── Modelos base (atualizados até 2026) ──
   const MODELOS_BASE = {
     'Samsung': [
@@ -2160,7 +1551,6 @@
     if (!d[marca]) d[marca] = [];
     if (!d[marca].includes(modelo)) d[marca].push(modelo);
     localStorage.setItem(CUSTOM_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) { _cache.modelos = JSON.parse(JSON.stringify(d)); _sbSetConfig('modelos', d); }
   }
   function getMarcas() {
     const custom = getCustomModelos();
@@ -2252,19 +1642,12 @@
   const DB_KEY = 'imperaCellOS';
 
   function getData() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.ordens));
-    }
     try { return JSON.parse(localStorage.getItem(DB_KEY)) || { ordens: [], nextId: 1 }; }
     catch { return { ordens: [], nextId: 1 }; }
   }
 
   function saveData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
-    if (_useSupabase && _cache._loaded) {
-      _cache.ordens = JSON.parse(JSON.stringify(data));
-      _syncOrdens(data);
-    }
     atualizarBackupInfo();
   }
 
@@ -2277,28 +1660,13 @@
   }
 
   function exportarJSON() {
-    let backupData;
-    if (_useSupabase && _cache._loaded) {
-      backupData = {
-        ordens: JSON.parse(JSON.stringify(_cache.ordens)),
-        financeiro: JSON.parse(JSON.stringify(_cache.financeiro)),
-        vendas: JSON.parse(JSON.stringify(_cache.vendas)),
-        estoque: JSON.parse(JSON.stringify(_cache.estoque)),
-        precos: JSON.parse(JSON.stringify(_cache.precos)),
-        modelos: JSON.parse(JSON.stringify(_cache.modelos)),
-        renomes: JSON.parse(JSON.stringify(_cache.renomes)),
-        version: 'supabase_v1'
-      };
-    } else {
-      backupData = getData(); // fallback legado
-    }
-    
-    const json = JSON.stringify(backupData, null, 2);
+    const data = getData();
+    const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     const dt   = new Date();
-    const nome = 'impera_cell_supabase_' +
+    const nome = 'impera_cell_' +
       dt.getFullYear() + '-' +
       String(dt.getMonth()+1).padStart(2,'0') + '-' +
       String(dt.getDate()).padStart(2,'0') + '.json';
@@ -2306,141 +1674,27 @@
     a.download = nome;
     a.click();
     URL.revokeObjectURL(url);
-    toast('✅ Backup completo exportado da nuvem!');
+    toast('✅ Backup exportado: ' + nome + ' — salve em C:\\Users\\teste\\Documents\\Nova pasta\\Impera Cell\\backups\\');
   }
 
-  async function importarJSON(event) {
+  function importarJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
       try {
         const data = JSON.parse(e.target.result);
-        
-        // Verificar se é formato novo ou antigo (legado)
-        const isNewFormat = data.version === 'supabase_v1';
-        const hasOrdens = isNewFormat ? (data.ordens && Array.isArray(data.ordens.ordens)) : (data.ordens && Array.isArray(data.ordens));
-        
-        if (!hasOrdens) {
+        if (!data.ordens || !Array.isArray(data.ordens)) {
           toast('Arquivo inválido. Selecione um backup gerado pelo sistema.', true);
           return;
         }
-        
-        if (!confirm('Isso vai SUBSTITUIR todos os dados atuais na nuvem (Supabase) pelos do backup. Continuar?')) return;
-        
-        const msgEl = document.getElementById('loadingMsg');
-        const loader = document.getElementById('appLoading');
-        if (loader) {
-          if (msgEl) msgEl.textContent = 'Importando backup para a nuvem...';
-          loader.style.display = 'flex';
-        }
-        
-        if (isNewFormat) {
-          if (_useSupabase) {
-            // Sincronizar Ordens
-            _cache.ordens = data.ordens;
-            const ordensRows = _cache.ordens.ordens.map(_osToRow);
-            await _sbDeleteAll('ordens');
-            if (ordensRows.length > 0) {
-              for (let i = 0; i < ordensRows.length; i += 50) {
-                await _sbUpsert('ordens', ordensRows.slice(i, i + 50));
-              }
-            }
-            await _sbSetSeq('ordens', _cache.ordens.nextId);
-            
-            // Sincronizar Financeiro
-            _cache.financeiro = data.financeiro;
-            const lancRows = _cache.financeiro.lancamentos.map(_lancToRow);
-            await _sbDeleteAll('lancamentos');
-            if (lancRows.length > 0) {
-              for (let i = 0; i < lancRows.length; i += 50) {
-                await _sbUpsert('lancamentos', lancRows.slice(i, i + 50));
-              }
-            }
-            await _sbSetSeq('lancamentos', _cache.financeiro.nextId);
-            
-            // Sincronizar Vendas
-            _cache.vendas = data.vendas;
-            const vendasRows = _cache.vendas.vendas.map(_vendaToRow);
-            await _sbDeleteAll('vendas');
-            if (vendasRows.length > 0) {
-              for (let i = 0; i < vendasRows.slice(i, i + 50); i += 50) {
-                await _sbUpsert('vendas', vendasRows.slice(i, i + 50));
-              }
-            }
-            if (_cache.vendas.caixas) {
-              await _sbDeleteAll('caixas');
-              const caixaRows = Object.entries(_cache.vendas.caixas).map(([dt, val]) => ({
-                data: dt,
-                caixa_inicial: val.caixaInicial || 0,
-                dados: val,
-              }));
-              if (caixaRows.length > 0) await _sbUpsertByKey('caixas', 'data', caixaRows);
-            }
-            await _sbSetSeq('vendas', _cache.vendas.nextId);
-            
-            // Sincronizar Estoque
-            _cache.estoque = data.estoque;
-            const prodRows = _cache.estoque.produtos.map(_prodToRow);
-            await _sbDeleteAll('estoque');
-            if (prodRows.length > 0) {
-              for (let i = 0; i < prodRows.length; i += 50) {
-                await _sbUpsert('estoque', prodRows.slice(i, i + 50));
-              }
-            }
-            await _sbSetSeq('estoque', _cache.estoque.nextId);
-            
-            // Configurações
-            _cache.precos = data.precos || {};
-            _cache.modelos = data.modelos || {};
-            _cache.renomes = data.renomes || {};
-            await _sbSetConfig('precos', _cache.precos);
-            await _sbSetConfig('modelos', _cache.modelos);
-            await _sbSetConfig('renomes', _cache.renomes);
-          } else {
-            // Local fallback
-            localStorage.setItem(DB_KEY, JSON.stringify(data.ordens));
-            localStorage.setItem(FIN_KEY, JSON.stringify(data.financeiro));
-            localStorage.setItem(VENDAS_KEY, JSON.stringify(data.vendas));
-            localStorage.setItem(ESTOQUE_KEY, JSON.stringify(data.estoque));
-            localStorage.setItem('imperaCellPrecos', JSON.stringify(data.precos));
-            localStorage.setItem('imperaCellModelos', JSON.stringify(data.modelos));
-            localStorage.setItem('imperaCellRenomesModelo', JSON.stringify(data.renomes));
-          }
-          toast('✅ Backup completo importado com sucesso!');
-        } else {
-          // Formato legado
-          if (_useSupabase) {
-            _cache.ordens = data;
-            const ordensRows = data.ordens.map(_osToRow);
-            await _sbDeleteAll('ordens');
-            if (ordensRows.length > 0) {
-              for (let i = 0; i < ordensRows.length; i += 50) {
-                await _sbUpsert('ordens', ordensRows.slice(i, i + 50));
-              }
-            }
-            await _sbSetSeq('ordens', data.nextId);
-          } else {
-            saveData(data);
-          }
-          toast('✅ Backup legado (apenas OS) importado com sucesso!');
-        }
-        
-        if (loader) loader.style.display = 'none';
-        
-        // Forçar renderização de todas as telas
-        if (typeof renderDashboard === 'function') renderDashboard();
-        if (typeof renderListaOS === 'function') renderListaOS();
-        if (typeof renderFinanceiro === 'function') renderFinanceiro();
-        if (typeof renderEstoque === 'function') renderEstoque();
-        if (typeof renderVendas === 'function') renderVendas();
-        if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
-        
-      } catch (err) {
-        console.error(err);
-        const loader = document.getElementById('appLoading');
-        if (loader) loader.style.display = 'none';
-        toast('Erro ao processar o arquivo JSON de backup.', true);
+        if (!confirm('Isso vai SUBSTITUIR todos os dados atuais pelos do backup. Continuar?')) return;
+        saveData(data);
+        toast('✅ Backup importado com sucesso! ' + data.ordens.length + ' OS carregadas.');
+        renderDashboard();
+        atualizarBackupInfo();
+      } catch(err) {
+        toast('Erro ao ler o arquivo JSON.', true);
       }
     };
     reader.readAsText(file);
@@ -2543,91 +1797,6 @@
 
   function getChk(id) { return document.getElementById(id)?.checked || false; }
 
-    // ── Controle de Fotos do Aparelho/Serviço ──
-  let _osFotosTemp = [];
-
-  function manipularFotosOS(event) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const reader = new FileReader();
-      
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const max_size = 800; // redimensionar para economizar espaço
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > max_size) {
-              height *= max_size / width;
-              width = max_size;
-            }
-          } else {
-            if (height > max_size) {
-              width *= max_size / height;
-              height = max_size;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Qualidade 0.7 para manter o payload pequeno (aprox. 50kb-100kb por foto)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          _osFotosTemp.push(dataUrl);
-          
-          desenharFotosPreview();
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-    event.target.value = '';
-  }
-
-  function desenharFotosPreview() {
-    const container = document.getElementById('osFotosPreviewContainer');
-    if (!container) return;
-    container.innerHTML = _osFotosTemp.map((foto, idx) => `
-      <div style="position:relative;width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330">
-        <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
-        <button type="button" onclick="removerFotoOS(${idx})" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(224,84,84,0.9);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold">×</button>
-      </div>
-    `).join('');
-  }
-
-  function removerFotoOS(idx) {
-    _osFotosTemp.splice(idx, 1);
-    desenharFotosPreview();
-  }
-
-  function abrirFotoVisualizador(src) {
-    let overlay = document.getElementById('fotoVisualizadorOverlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'fotoVisualizadorOverlay';
-      overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:100000;display:none;align-items:center;justify-content:center;cursor:zoom-out';
-      overlay.onclick = () => overlay.style.display = 'none';
-      
-      const img = document.createElement('img');
-      img.id = 'fotoVisualizadorImg';
-      img.style = 'max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);object-fit:contain';
-      
-      overlay.appendChild(img);
-      document.body.appendChild(overlay);
-    }
-    document.getElementById('fotoVisualizadorImg').src = src;
-    overlay.style.display = 'flex';
-  }
-
-
   function salvarOS() {
     const nome  = document.getElementById('nomeCliente').value.trim();
     const model = document.getElementById('modeloAparelho').value.trim();
@@ -2655,7 +1824,7 @@
         bairro:         document.getElementById('bairro').value.trim(),
         cidade:         document.getElementById('cidade').value.trim(),
         email:          document.getElementById('email').value.trim(),
-        tecnico:        currentUser ? currentUser.name : document.getElementById('tecnico').value.trim(),
+        tecnico:        document.getElementById('tecnico').value.trim(),
         marca:          document.getElementById('marca').value,
         modeloAparelho: model,
         imei:           document.getElementById('imei').value.trim(),
@@ -2705,7 +1874,6 @@
         custoServico:   document.getElementById('custoServico').value,
         previsaoEntrega:document.getElementById('previsaoEntrega').value,
         observacoes:    document.getElementById('observacoes').value.trim(),
-        fotos:          _osFotosTemp,
       });
       osExistente.historico = osExistente.historico || [];
       osExistente.historico.push(`${today()} — OS editada manualmente.`);
@@ -2816,7 +1984,6 @@
       previsaoEntrega:document.getElementById('previsaoEntrega').value,
       observacoes:    document.getElementById('observacoes').value.trim(),
       estadoVisual:   '',
-      fotos:          _osFotosTemp,
       historico: [`${today()} — OS criada. Status: Aguardando.`],
     };
 
@@ -2828,8 +1995,6 @@
   }
 
   function limparForm() {
-    _osFotosTemp = [];
-    desenharFotosPreview();
     document.getElementById('osEditandoId').value = '';
     document.getElementById('novaOSTitulo').textContent = 'Nova Ordem de Serviço';
     ['nomeCliente','telefone','cpf','rg','endereco','bairro','cidade','email',
@@ -3112,8 +2277,6 @@
     set('previsaoEntrega', os.previsaoEntrega);
     set('defeitoRelatado', os.defeitoRelatado);
     set('observacoes', os.observacoes);
-    _osFotosTemp = os.fotos || [];
-    desenharFotosPreview();
     atualizarLucroOS();
 
     showPage('nova-os');
@@ -3258,16 +2421,6 @@
       </div>
       ${os.observacoes ? `<div style="margin-bottom:12px;font-size:14px"><span style="color:var(--text-muted)">Obs. internas:</span><br>${os.observacoes}</div>` : ''}
 
-      ${os.fotos && os.fotos.length ? `
-      <div class="section-title">Fotos do Aparelho / Serviço</div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-        ${os.fotos.map(foto => `
-          <div style="width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
-            <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
-          </div>
-        `).join('')}
-      </div>` : ''}
-
       <div class="section-title" style="margin-top:16px">Alterar Status</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         ${['Aguardando','Aguardando Peça','Em Andamento','Concluído','Entregue','Cancelado'].map(s =>
@@ -3394,7 +2547,6 @@
 
   // ── Excluir OS ──
   function excluirOS(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
     if (!confirm('Deseja realmente excluir esta OS? Essa ação não pode ser desfeita.')) return;
     const data = getData();
     data.ordens = data.ordens.filter(o => o.id !== id);
@@ -3439,19 +2591,10 @@
   let prodEditId = null;
 
   function getEstoque() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.estoque));
-    }
     try { return JSON.parse(localStorage.getItem(ESTOQUE_KEY)) || { produtos: [], nextId: 1 }; }
     catch { return { produtos: [], nextId: 1 }; }
   }
-  function saveEstoque(d) {
-    localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
-      _cache.estoque = JSON.parse(JSON.stringify(d));
-      _syncEstoque(d);
-    }
-  }
+  function saveEstoque(d) { localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d)); }
 
   function abrirModalProduto(id) {
     prodEditId = id || null;
@@ -3512,7 +2655,6 @@
   }
 
   function excluirProduto(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
     if (!confirm('Excluir este produto?')) return;
     const d = getEstoque();
     d.produtos = d.produtos.filter(x => x.id !== id);
@@ -3567,19 +2709,10 @@
   const VENDAS_KEY = 'imperaCellVendas';
 
   function getVendas() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.vendas));
-    }
     try { return JSON.parse(localStorage.getItem(VENDAS_KEY)) || { vendas: [], caixas: {}, nextId: 1 }; }
     catch { return { vendas: [], caixas: {}, nextId: 1 }; }
   }
-  function saveVendas(d) {
-    localStorage.setItem(VENDAS_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
-      _cache.vendas = JSON.parse(JSON.stringify(d));
-      _syncVendas(d);
-    }
-  }
+  function saveVendas(d) { localStorage.setItem(VENDAS_KEY, JSON.stringify(d)); }
 
   function prefillVendasData() {
     const inp = document.getElementById('vendasData');
@@ -3644,7 +2777,6 @@
         data,
         hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         descricao, preco, quantidade, total, formaPagamento,
-        vendedor: currentUser ? currentUser.name : ''
       });
     }
     saveVendas(d);
@@ -3655,7 +2787,6 @@
   }
 
   function excluirVenda(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
     if (!confirm('Excluir esta venda?')) return;
     const d = getVendas();
     d.vendas = d.vendas.filter(x => x.id !== id);
@@ -3737,7 +2868,6 @@
         <td>${v.quantidade}</td>
         <td>${formatMoney(v.preco)}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${v.formaPagamento}</span></td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${v.vendedor || '—'}</span></td>
         <td><strong style="color:var(--gold)">${formatMoney(v.total)}</strong></td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="editarVenda(${v.id})">✏️</button>
@@ -3774,19 +2904,10 @@
   const FIN_KEY = 'imperaCellFin';
 
   function getFin() {
-    if (_useSupabase && _cache._loaded) {
-      return JSON.parse(JSON.stringify(_cache.financeiro));
-    }
     try { return JSON.parse(localStorage.getItem(FIN_KEY)) || { lancamentos: [], nextId: 1 }; }
     catch { return { lancamentos: [], nextId: 1 }; }
   }
-  function saveFin(d) {
-    localStorage.setItem(FIN_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
-      _cache.financeiro = JSON.parse(JSON.stringify(d));
-      _syncFinanceiro(d);
-    }
-  }
+  function saveFin(d) { localStorage.setItem(FIN_KEY, JSON.stringify(d)); }
 
   function toggleFinCustoVisibility() {
     const tipo = document.getElementById('finTipo').value;
@@ -3870,7 +2991,6 @@
   }
 
   function excluirLancamento(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
     if (!confirm('Excluir este lançamento?')) return;
     const d = getFin();
     d.lancamentos = d.lancamentos.filter(x => x.id !== id);
@@ -3886,14 +3006,6 @@
     const hoje = new Date();
     const ano = hoje.getFullYear();
     const mes = hoje.getMonth();
-    const dia = hoje.getDate();
-
-    if (_periodoAtivo === 'hoje') {
-      return {
-        de: new Date(ano, mes, dia).toISOString().slice(0,10),
-        ate: new Date(ano, mes, dia).toISOString().slice(0,10)
-      };
-    }
 
     if (_periodoAtivo === 'mes-atual') {
       return {
@@ -5130,15 +4242,6 @@
   renderDashboard();
   // Inicializar canvas de senha na primeira carga
   setTimeout(() => { window._senhaPatternInit && window._senhaPatternInit(); }, 100);
-
-
-  // ── Inicializar Supabase ao carregar ──
-  window.addEventListener('DOMContentLoaded', async () => {
-    checkSession();
-    await _initSupabase();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
-  });
 </script>
 </body>
 </html>
