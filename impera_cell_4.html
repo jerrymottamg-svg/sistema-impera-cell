@@ -5164,6 +5164,7 @@
       const os = data.ordens.find(o => o.id === Number(trackId));
       const isTrocaTela = (os.tipoManutencao || '').toLowerCase().includes('tela') || (os.servicoRealizado || '').toLowerCase().includes('tela');
       const isTrocaBateria = (os.tipoManutencao || '').toLowerCase().includes('bateria') || (os.servicoRealizado || '').toLowerCase().includes('bateria');
+      const isTrocaConector = (os.tipoManutencao || '').toLowerCase().includes('conector') || (os.servicoRealizado || '').toLowerCase().includes('conector');
       const isConcluidoOuEntregue = ['Concluído', 'Entregue'].includes(os.status);
       
       let garantiaHtml = '';
@@ -5207,6 +5208,32 @@
                 <li>Não exponha o aparelho ao calor excessivo.</li>
               </ul>
               <p style="margin-top:12px;">Caso perceba qualquer anormalidade dentro do período de garantia, entre em contato conosco antes de levar o aparelho a outra assistência.</p>
+              <p style="margin-top:12px;">Agradecemos pela confiança!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
+            </div>
+          `;
+        }
+        if (isTrocaConector) {
+          garantiaHtml += `
+            <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
+              <p><strong>Olá ${os.nomeCliente}! O conector de carga do seu aparelho foi substituído e o serviço foi realizado com sucesso.</strong></p>
+              <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
+              <p>✅ A garantia do conector de carga é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas no serviço realizado.</p>
+              <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
+              <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+                <li>Danos causados por quedas ou impactos;</li>
+                <li>Contato com água ou qualquer outro líquido;</li>
+                <li>Oxidação;</li>
+                <li>Uso de carregadores ou cabos danificados ou de baixa qualidade;</li>
+                <li>Danos provocados por forçar o cabo durante o carregamento;</li>
+                <li>Mau uso ou tentativa de reparo por terceiros.</li>
+              </ul>
+              <p style="margin-top:12px;"><strong>Recomendações:</strong></p>
+              <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+                <li>Utilize cabos e carregadores de boa qualidade.</li>
+                <li>Conecte e remova o cabo com cuidado, sem fazer movimentos bruscos.</li>
+                <li>Mantenha o conector limpo e protegido contra poeira e umidade.</li>
+              </ul>
+              <p style="margin-top:12px;">Em caso de qualquer problema dentro do período de garantia, entre em contato conosco antes de procurar outra assistência.</p>
               <p style="margin-top:12px;">Agradecemos pela confiança!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
             </div>
           `;
