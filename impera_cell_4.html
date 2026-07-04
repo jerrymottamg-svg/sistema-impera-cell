@@ -577,14 +577,15 @@
 
 <!-- NAV -->
 <nav>
-  <div class="tab active" onclick="showPage('dashboard')">📊 Dashboard</div>
-  <div class="tab" onclick="showPage('vendas')">🛒 Vendas</div>
-  <div class="tab" onclick="showPage('nova-os')">➕ Nova OS</div>
-  <div class="tab" onclick="showPage('lista-os')">📋 Ordens de Serviço</div>
-  <div class="tab" onclick="showPage('clientes')">👤 Clientes</div>
-  <div class="tab" onclick="showPage('estoque')">📦 Estoque</div>
-  <div class="tab" onclick="showPage('financeiro')">💰 Financeiro</div>
-  <div class="tab" onclick="showPage('tabela')">💲 Tabela de Preços</div>
+  <div class="tab active" id="tab-dashboard" onclick="showPage('dashboard')">📊 Dashboard</div>
+  <div class="tab" id="tab-vendas" onclick="showPage('vendas')">🛒 Vendas</div>
+  <div class="tab" id="tab-nova-os" onclick="showPage('nova-os')">➕ Nova OS</div>
+  <div class="tab" id="tab-lista-os" onclick="showPage('lista-os')">📋 Ordens de Serviço</div>
+  <div class="tab" id="tab-clientes" onclick="showPage('clientes')">👤 Clientes</div>
+  <div class="tab" id="tab-estoque" onclick="showPage('estoque')">📦 Estoque</div>
+  <div class="tab" id="tab-financeiro" onclick="showPage('financeiro')">💰 Financeiro</div>
+  <div class="tab" id="tab-tabela" onclick="showPage('tabela')">💲 Tabela de Preços</div>
+  <div class="tab" id="tab-usuarios" onclick="showPage('usuarios')" style="display:none;">⚙️ Usuários</div>
 </nav>
 
 <!-- BACKUP BAR -->
@@ -1148,7 +1149,84 @@
     <div id="tabelaContent"></div>
   </div>
 
+  <!-- ─── USUARIOS ─── -->
+  <div class="page" id="page-usuarios">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">⚙️</span> Gerenciar Usuários</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+      </div>
+      <div class="table-wrap">
+        <table id="tabelaUsuarios">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Login</th>
+              <th>Cargo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaUsuariosBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </main>
+
+<!-- MODAL USUARIO -->
+<div class="modal" id="modalUsuario">
+  <div class="modal-content" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="modalUsuarioTitulo">Novo Usuário</h3>
+      <button class="close-btn" onclick="document.getElementById('modalUsuario').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="userId" />
+      <div class="form-group">
+        <label>Nome Completo</label>
+        <input type="text" id="userName" placeholder="Ex: João Silva" />
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label>Nome de Usuário (Login)</label>
+          <input type="text" id="userLogin" placeholder="Ex: joao.silva" />
+        </div>
+        <div>
+          <label>Senha / PIN</label>
+          <input type="password" id="userPin" placeholder="Sua senha secreta" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cargo (Perfil)</label>
+        <select id="userRole">
+          <option value="tecnico">Técnico (Acesso Padrão)</option>
+          <option value="vendedor">Vendedor</option>
+          <option value="admin">Administrador (Acesso Total)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Permissões Customizadas</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;background:var(--surface2);padding:12px;border-radius:6px;border:1px solid var(--border)">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_editOS"> Pode Salvar/Editar OS</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_deleteOS"> Pode Excluir Registros</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_viewEstoque"> Acessar Estoque</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_editEstoque"> Editar/Adicionar Estoque</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_viewVendas"> Acessar Vendas</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_editVendas"> Realizar Venda</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_viewCaixa"> Acessar Financeiro/Caixa</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_editCaixa"> Lançamentos no Caixa</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:20px;display:flex;justify-content:flex-end;gap:12px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modalUsuario').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
 
 <style>
   .tabela-section { margin-bottom: 20px; }
@@ -1803,11 +1881,15 @@
 
   // ── Autenticação e Usuários ──
   let currentUser = null;
-  const appUsers = [
-    { username: "admin", pin: "1234", role: "admin", name: "Administrador" },
-    { username: "tecnico1", pin: "1111", role: "tecnico", name: "Técnico 1" },
-    { username: "vendedor1", pin: "2222", role: "vendedor", name: "Vendedor 1" }
+  let appUsers = [
+    { id: 1, username: "admin", pin: "1234", role: "admin", name: "Administrador", perms: { editOS: true, deleteOS: true, viewCaixa: true, viewEstoque: true, viewVendas: true, config: true } },
+    { id: 2, username: "tecnico1", pin: "1111", role: "tecnico", name: "Técnico 1", perms: { editOS: true, deleteOS: false, viewCaixa: false, viewEstoque: true, viewVendas: false, config: false } },
+    { id: 3, username: "vendedor1", pin: "2222", role: "vendedor", name: "Vendedor 1", perms: { editOS: false, deleteOS: false, viewCaixa: false, viewEstoque: true, viewVendas: true, config: false } }
   ];
+
+  async function _saveAppUsers() {
+    await _sbSetConfig('appUsers', appUsers);
+  }
 
   function checkSession() {
     const saved = localStorage.getItem('imperaCellUser');
@@ -1816,6 +1898,7 @@
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('userInfoHeader').style.display = 'flex';
       document.getElementById('loggedUserName').textContent = currentUser.name;
+      aplicarPermissoesUI();
     } else {
       currentUser = null;
       document.getElementById('loginOverlay').style.display = 'flex';
@@ -1839,6 +1922,7 @@
       document.getElementById('userInfoHeader').style.display = 'flex';
       document.getElementById('loggedUserName').textContent = currentUser.name;
       toast(`✅ Bem-vindo(a), ${currentUser.name}!`);
+      aplicarPermissoesUI();
     } else {
       toast("❌ Usuário ou senha incorretos.");
     }
@@ -1852,6 +1936,32 @@
       document.getElementById('loginPassword').value = "";
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('userInfoHeader').style.display = 'none';
+    }
+  }
+
+  function aplicarPermissoesUI() {
+    if (!currentUser) return;
+    const p = currentUser.perms || {};
+    const isAdmin = currentUser.role === 'admin';
+    
+    const setDisplay = (id, cond) => {
+      const el = document.getElementById(id);
+      if(el) el.style.display = (cond || isAdmin) ? 'flex' : 'none';
+    };
+    
+    setDisplay('tab-vendas', p.viewVendas);
+    setDisplay('tab-estoque', p.viewEstoque);
+    setDisplay('tab-financeiro', p.viewCaixa);
+    setDisplay('tab-usuarios', isAdmin);
+    
+    // Redireciona se estiver em página que perdeu acesso
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const pId = activePage.id;
+      if (pId === 'page-vendas' && !p.viewVendas && !isAdmin) showPage('dashboard');
+      if (pId === 'page-estoque' && !p.viewEstoque && !isAdmin) showPage('dashboard');
+      if (pId === 'page-financeiro' && !p.viewCaixa && !isAdmin) showPage('dashboard');
+      if (pId === 'page-usuarios' && !isAdmin) showPage('dashboard');
     }
   }
 
@@ -1901,6 +2011,10 @@
       const precosConf = await _sbGetConfig('precos');
       const modelosConf = await _sbGetConfig('modelos');
       const renomesConf = await _sbGetConfig('renomes');
+      const appUsersConf = await _sbGetConfig('appUsers');
+      if (appUsersConf && Array.isArray(appUsersConf)) {
+        appUsers = appUsersConf;
+      }
       console.log('🔍 [_initSupabase] Configuracoes carregadas');
 
       const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
@@ -2690,6 +2804,10 @@
 
 
   function salvarOS() {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editOS)) {
+      toast('❌ Você não tem permissão para salvar/editar OS.', true);
+      return;
+    }
     const nome  = document.getElementById('nomeCliente').value.trim();
     const model = document.getElementById('modeloAparelho').value.trim();
     const tipo  = document.getElementById('tipoManutencao').value;
@@ -3456,6 +3574,10 @@
 
   // ── Alterar Status ──
   function alterarStatus(id, novoStatus) {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editOS)) {
+      toast('❌ Você não tem permissão para alterar o status da OS.', true);
+      return;
+    }
     const data = getData();
     const os = data.ordens.find(o => o.id === id);
     if (!os) return;
@@ -3510,7 +3632,7 @@
 
   // ── Excluir OS ──
   function excluirOS(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Deseja realmente excluir esta OS? Essa ação não pode ser desfeita.')) return;
     const data = getData();
     data.ordens = data.ordens.filter(o => o.id !== id);
@@ -3594,6 +3716,10 @@
   }
 
   function salvarProduto() {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editEstoque)) {
+      toast('❌ Você não tem permissão para alterar o Estoque.', true);
+      return;
+    }
     const nome = document.getElementById('prodNome').value.trim();
     if (!nome) { toast('Informe o nome do produto.', true); return; }
     const d = getEstoque();
@@ -3628,7 +3754,7 @@
   }
 
   function excluirProduto(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir este produto?')) return;
     const d = getEstoque();
     d.produtos = d.produtos.filter(x => x.id !== id);
@@ -3736,6 +3862,10 @@
   }
 
   function salvarVenda() {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editVendas)) {
+      toast('❌ Você não tem permissão para realizar Vendas.', true);
+      return;
+    }
     const descricao = document.getElementById('vendaDescricao').value.trim();
     const preco = parseFloat(document.getElementById('vendaPreco').value);
     const quantidade = parseInt(document.getElementById('vendaQuantidade').value);
@@ -3771,7 +3901,7 @@
   }
 
   function excluirVenda(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir esta venda?')) return;
     const d = getVendas();
     d.vendas = d.vendas.filter(x => x.id !== id);
@@ -3925,6 +4055,10 @@
   }
 
   function salvarLancamento() {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editCaixa)) {
+      toast('❌ Você não tem permissão para fazer lançamentos no Caixa.', true);
+      return;
+    }
     const desc = document.getElementById('finDesc').value.trim();
     const valor = parseFloat(document.getElementById('finValor').value);
     const data = document.getElementById('finData').value;
@@ -3986,7 +4120,7 @@
   }
 
   function excluirLancamento(id) {
-    if (currentUser?.role !== 'admin') { toast('❌ Apenas administradores podem excluir.', true); return; }
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir este lançamento?')) return;
     const d = getFin();
     d.lancamentos = d.lancamentos.filter(x => x.id !== id);
@@ -4216,6 +4350,7 @@
     if (id === 'estoque') renderEstoque();
     if (id === 'financeiro') { popularMeses(); renderFinanceiro(); }
     if (id === 'tabela') renderTabela();
+    if (id === 'usuarios') renderUsuarios();
   }
 
   // ── Melhorar imprimirOS — layout fiel ao PDF ──
@@ -5237,6 +5372,114 @@
     closeModal('modalAddModelo');
     toast(`✅ "${nome}" adicionado em ${GRUPOS_MODELOS[gk]?.label}!`);
     renderTabela();
+  }
+
+  // ── Gerenciamento de Usuários ──
+  function renderUsuarios() {
+    const tbody = document.getElementById('tabelaUsuariosBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    appUsers.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.username}</td>
+        <td><span class="badge ${u.role === 'admin' ? 'badge-danger' : 'badge-primary'}">${u.role}</span></td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="editarUsuario(${u.id})">✏️</button>
+          ${u.id !== 1 ? `<button class="btn btn-sm btn-danger" onclick="excluirUsuario(${u.id})">🗑</button>` : ''}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function abrirModalUsuario() {
+    document.getElementById('userId').value = '';
+    document.getElementById('userName').value = '';
+    document.getElementById('userLogin').value = '';
+    document.getElementById('userPin').value = '';
+    document.getElementById('userRole').value = 'tecnico';
+    
+    ['editOS','deleteOS','viewEstoque','editEstoque','viewVendas','editVendas','viewCaixa','editCaixa'].forEach(p => {
+      const el = document.getElementById('perm_'+p);
+      if(el) el.checked = false;
+    });
+    
+    document.getElementById('modalUsuarioTitulo').textContent = 'Novo Usuário';
+    document.getElementById('modalUsuario').classList.add('open');
+  }
+
+  function editarUsuario(id) {
+    const u = appUsers.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('userId').value = u.id;
+    document.getElementById('userName').value = u.name;
+    document.getElementById('userLogin').value = u.username;
+    document.getElementById('userPin').value = u.pin;
+    document.getElementById('userRole').value = u.role;
+    
+    const p = u.perms || {};
+    ['editOS','deleteOS','viewEstoque','editEstoque','viewVendas','editVendas','viewCaixa','editCaixa'].forEach(k => {
+      const el = document.getElementById('perm_'+k);
+      if(el) el.checked = !!p[k];
+    });
+    
+    document.getElementById('modalUsuarioTitulo').textContent = 'Editar Usuário';
+    document.getElementById('modalUsuario').classList.add('open');
+  }
+
+  async function salvarUsuario() {
+    const idVal = document.getElementById('userId').value;
+    const name = document.getElementById('userName').value.trim();
+    const login = document.getElementById('userLogin').value.trim();
+    const pin = document.getElementById('userPin').value.trim();
+    const role = document.getElementById('userRole').value;
+    
+    if (!name || !login || !pin) {
+      toast('❌ Preencha nome, login e senha!', true);
+      return;
+    }
+    if (appUsers.some(u => u.username === login && u.id != idVal)) {
+      toast('❌ Login já existe!', true);
+      return;
+    }
+    
+    const perms = {};
+    ['editOS','deleteOS','viewEstoque','editEstoque','viewVendas','editVendas','viewCaixa','editCaixa'].forEach(k => {
+      const el = document.getElementById('perm_'+k);
+      if(el) perms[k] = el.checked;
+    });
+    
+    if (idVal) {
+      const u = appUsers.find(x => x.id == idVal);
+      if (u) {
+        u.name = name;
+        u.username = login;
+        u.pin = pin;
+        u.role = role;
+        u.perms = perms;
+      }
+    } else {
+      const newId = appUsers.length ? Math.max(...appUsers.map(x => x.id)) + 1 : 1;
+      appUsers.push({ id: newId, name, username: login, pin, role, perms });
+    }
+    
+    await _saveAppUsers();
+    renderUsuarios();
+    document.getElementById('modalUsuario').classList.remove('open');
+    toast('✅ Usuário salvo!');
+  }
+
+  async function excluirUsuario(id) {
+    if (id === 1) return;
+    if (confirm('Excluir este usuário permanentemente?')) {
+      appUsers = appUsers.filter(u => u.id !== id);
+      await _saveAppUsers();
+      renderUsuarios();
+      toast('✅ Usuário excluído!');
+    }
   }
 
   // ── Init ──
