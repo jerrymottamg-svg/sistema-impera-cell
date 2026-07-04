@@ -4275,30 +4275,39 @@
     if (periodo) periodoLabel = `<br><span style="font-size:10px;text-transform:none;letter-spacing:0">${new Date(periodo.de+'T12:00').toLocaleDateString('pt-BR')} – ${new Date(periodo.ate+'T12:00').toLocaleDateString('pt-BR')}</span>`;
 
     const stats = document.getElementById('finStats');
-    if (stats) stats.innerHTML = `
-      <div class="stat-card">
-        <span class="stat-label">🔧 Notas de Serviço${periodoLabel}</span>
-        <span class="stat-value gold">${formatMoney(totalOS)}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">🛒 Vendas de Produtos${periodoLabel}</span>
-        <span class="stat-value" style="color:var(--accent)">${formatMoney(totalVendas)}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">📈 Faturamento Bruto${periodoLabel}</span>
-        <span class="stat-value green">${formatMoney(faturamentoBruto)}</span>
-      </div>
-      <div class="stat-card" style="border-color:var(--danger)">
-        <span class="stat-label">📉 Saídas (despesas)${periodoLabel}</span>
-        <span class="stat-value red">− ${formatMoney(saidas)}</span>
-        <button class="btn btn-sm btn-danger" style="margin-top:10px;font-size:12px;padding:4px 12px" onclick="abrirModalLancamento('saida')">+ Lançar Saída</button>
-      </div>
-      <div class="stat-card" style="border-color:${saldo>=0?'var(--success)':'var(--danger)'}">
-        <span class="stat-label">💵 Faturamento Líquido${periodoLabel}</span>
-        <span class="stat-value ${saldo>=0?'green':'red'}">${formatMoney(saldo)}</span>
-        <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Bruto − Saídas</span>
-      </div>
-    `;
+    if (stats) {
+      const isAdmin = currentUser?.role === 'admin';
+      const mOS = isAdmin ? formatMoney(totalOS) : 'R$ ***';
+      const mVendas = isAdmin ? formatMoney(totalVendas) : 'R$ ***';
+      const mBruto = isAdmin ? formatMoney(faturamentoBruto) : 'R$ ***';
+      const mSaidas = isAdmin ? `− ${formatMoney(saidas)}` : 'R$ ***';
+      const mLiquido = isAdmin ? formatMoney(saldo) : 'R$ ***';
+      
+      stats.innerHTML = `
+        <div class="stat-card">
+          <span class="stat-label">🔧 Notas de Serviço${periodoLabel}</span>
+          <span class="stat-value gold">${mOS}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">🛒 Vendas de Produtos${periodoLabel}</span>
+          <span class="stat-value" style="color:var(--accent)">${mVendas}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">📈 Faturamento Bruto${periodoLabel}</span>
+          <span class="stat-value green">${mBruto}</span>
+        </div>
+        <div class="stat-card" style="border-color:var(--danger)">
+          <span class="stat-label">📉 Saídas (despesas)${periodoLabel}</span>
+          <span class="stat-value red">${mSaidas}</span>
+          <button class="btn btn-sm btn-danger" style="margin-top:10px;font-size:12px;padding:4px 12px" onclick="abrirModalLancamento('saida')">+ Lançar Saída</button>
+        </div>
+        <div class="stat-card" style="border-color:${saldo>=0?'var(--success)':'var(--danger)'}">
+          <span class="stat-label">💵 Faturamento Líquido${periodoLabel}</span>
+          <span class="stat-value ${saldo>=0?'green':'red'}">${mLiquido}</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Bruto − Saídas</span>
+        </div>
+      `;
+    }
 
     popularMeses();
 
