@@ -554,6 +554,9 @@
   </div>
 </div>
 
+<!-- TRACKING OVERLAY -->
+<div id="trackingOverlay" style="display:none; position: fixed; inset: 0; background: var(--bg); z-index: 200000; flex-direction: column; padding: 20px; align-items: center; justify-content: center; overflow-y:auto"></div>
+
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -3282,6 +3285,7 @@
     `;
 
     document.getElementById('modalOSActions').innerHTML = `
+      <button class="btn btn-primary btn-sm" onclick="copiarLinkAcompanhamento(${os.id})">🔗 Copiar Link Cliente</button>
       <button class="btn btn-secondary" onclick="imprimirOS(${os.id})">🖨 Imprimir OS</button>
       <button class="btn btn-danger btn-sm" onclick="excluirOS(${os.id})">🗑 Excluir</button>
     `;
@@ -3390,6 +3394,16 @@
     closeModal('modalOS');
     renderListaOS();
     renderDashboard();
+  }
+
+  function copiarLinkAcompanhamento(id) {
+    const baseUrl = window.location.href.split('?')[0];
+    const link = `${baseUrl}?track=${id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      toast('🔗 Link de acompanhamento copiado!');
+    }).catch(err => {
+      toast('❌ Falha ao copiar link.', true);
+    });
   }
 
   // ── Excluir OS ──
@@ -5134,6 +5148,39 @@
 
   // ── Inicializar Supabase ao carregar ──
   window.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const trackId = params.get('track');
+    if (trackId) {
+      document.getElementById('trackingOverlay').style.display = 'flex';
+      const loader = document.getElementById('appLoading');
+      if(loader) loader.style.display = 'flex';
+      await _initSupabase();
+      if(loader) loader.style.display = 'none';
+      const data = getData();
+      const os = data.ordens.find(o => o.id === Number(trackId));
+      if(os) {
+        document.getElementById('trackingOverlay').innerHTML = `
+          <div class="card" style="width: 100%; max-width: 400px; padding: 20px; text-align: center;">
+            <h2 style="color:var(--text); margin-bottom: 8px;">Acompanhamento de OS</h2>
+            <h3 style="color:var(--accent); margin-bottom: 24px;">OS #${String(os.id).padStart(4,'0')}</h3>
+            <p style="color:var(--text-muted); margin-bottom: 8px;">Cliente: ${os.nomeCliente}</p>
+            <p style="color:var(--text-muted); margin-bottom: 8px;">Aparelho: ${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</p>
+            <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);">
+              <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Status Atual</div>
+              ${badgeHTML(os.status)}
+            </div>
+            <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
+              <div style="margin-bottom: 8px; font-weight: bold; color:var(--text);">Histórico</div>
+              ${(os.historico || []).map(h => `<div style="margin-bottom:4px;">• ${h}</div>`).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+         document.getElementById('trackingOverlay').innerHTML = `<h3 style="color:var(--text)">OS não encontrada</h3>`;
+      }
+      return;
+    }
+
     checkSession();
     await _initSupabase();
     if (typeof renderDashboard === 'function') renderDashboard();
