@@ -3397,9 +3397,10 @@
   }
 
   function copiarLinkAcompanhamento(id) {
-    const baseUrl = window.location.href.split('?')[0];
-    const link = `${baseUrl}?track=${id}`;
-    navigator.clipboard.writeText(link).then(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('track', id);
+    url.hash = '';
+    navigator.clipboard.writeText(url.toString()).then(() => {
       toast('🔗 Link de acompanhamento copiado!');
     }).catch(err => {
       toast('❌ Falha ao copiar link.', true);
@@ -5148,8 +5149,11 @@
 
   // ── Inicializar Supabase ao carregar ──
   window.addEventListener('DOMContentLoaded', async () => {
-    const params = new URLSearchParams(window.location.search);
-    const trackId = params.get('track');
+    const urlParams = new URLSearchParams(window.location.search);
+    let trackId = urlParams.get('track');
+    if (!trackId && window.location.hash.includes('track=')) {
+      try { trackId = new URLSearchParams(window.location.hash.split('?')[1]).get('track'); } catch(e){}
+    }
     if (trackId) {
       document.getElementById('trackingOverlay').style.display = 'flex';
       const loader = document.getElementById('appLoading');
@@ -5158,17 +5162,43 @@
       if(loader) loader.style.display = 'none';
       const data = getData();
       const os = data.ordens.find(o => o.id === Number(trackId));
+      const isTrocaTela = (os.tipoManutencao || '').toLowerCase().includes('tela') || (os.servicoRealizado || '').toLowerCase().includes('tela');
+      const showGarantia = isTrocaTela && ['Concluído', 'Entregue'].includes(os.status);
+      const garantiaHtml = showGarantia ? `
+        <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
+          <p><strong>Olá! Seu aparelho teve a tela substituída e já está pronto para uso.</strong></p>
+          <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
+          <p>✅ A garantia da tela é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
+          <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
+          <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+            <li>Tela quebrada, trincada ou rachada;</li>
+            <li>Danos causados por quedas, impactos ou pressão;</li>
+            <li>Contato com água ou qualquer outro líquido;</li>
+            <li>Mau uso ou tentativa de reparo por terceiros.</li>
+          </ul>
+          <p style="margin-top:12px;">Para aumentar a vida útil da nova tela, recomendamos utilizar uma película de proteção e uma capa de boa qualidade, além de evitar quedas e contato com líquidos.</p>
+          <p style="margin-top:12px;">Em caso de qualquer dúvida ou se notar algum problema dentro do período de garantia, entre em contato conosco antes de levar o aparelho a outra assistência.</p>
+          <p style="margin-top:12px;">Agradecemos pela confiança em nosso trabalho!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
+        </div>
+      ` : '';
+
       if(os) {
         document.getElementById('trackingOverlay').innerHTML = `
           <div class="card" style="width: 100%; max-width: 400px; padding: 20px; text-align: center;">
             <h2 style="color:var(--text); margin-bottom: 8px;">Acompanhamento de OS</h2>
             <h3 style="color:var(--accent); margin-bottom: 24px;">OS #${String(os.id).padStart(4,'0')}</h3>
-            <p style="color:var(--text-muted); margin-bottom: 8px;">Cliente: ${os.nomeCliente}</p>
-            <p style="color:var(--text-muted); margin-bottom: 8px;">Aparelho: ${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Cliente: ${os.nomeCliente}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Aparelho: ${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Serviço: ${os.servicoRealizado || os.tipoManutencao || 'Não especificado'}</p>
+            <p style="color:var(--text-muted); margin-bottom: 8px;">Valor do Serviço: <strong style="color:var(--gold)">${formatMoney(os.valorServico || 0)}</strong></p>
+            
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);">
               <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Status Atual</div>
               ${badgeHTML(os.status)}
             </div>
+
+            ${garantiaHtml}
+
             <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
               <div style="margin-bottom: 8px; font-weight: bold; color:var(--text);">Histórico</div>
               ${(os.historico || []).map(h => `<div style="margin-bottom:4px;">• ${h}</div>`).join('')}
