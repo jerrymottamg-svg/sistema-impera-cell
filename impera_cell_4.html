@@ -927,12 +927,28 @@
           <textarea id="observacoes" placeholder="Descreva o serviço, peças necessárias, observações técnicas..."></textarea>
         </div>
         <div class="form-group full">
-          <label>Fotos do Aparelho / Serviço</label>
+          <label>Fotos ANTES do Serviço</label>
           <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
-            <label class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;max-width:180px;justify-content:center;padding:8px 16px;font-size:13px">
-              📷 Adicionar Fotos
-              <input type="file" id="osFotosInput" accept="image/*" multiple style="display:none" onchange="manipularFotosOS(event)" />
+            <label class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;max-width:200px;justify-content:center;padding:8px 16px;font-size:13px">
+              📷 Adicionar Fotos (Antes)
+              <input type="file" id="osFotosAntesInput" accept="image/*" multiple style="display:none" onchange="manipularFotosOS(event, 'antes')" />
             </label>
+            <div id="osFotosAntesPreviewContainer" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Fotos DEPOIS do Serviço</label>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+            <label class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;max-width:200px;justify-content:center;padding:8px 16px;font-size:13px">
+              📷 Adicionar Fotos (Depois)
+              <input type="file" id="osFotosDepoisInput" accept="image/*" multiple style="display:none" onchange="manipularFotosOS(event, 'depois')" />
+            </label>
+            <div id="osFotosDepoisPreviewContainer" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+          </div>
+        </div>
+        <div class="form-group full" id="osFotosLegacyContainer" style="display:none;">
+          <label>Fotos Gerais / Antigas</label>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
             <div id="osFotosPreviewContainer" style="display:flex;flex-wrap:wrap;gap:12px"></div>
           </div>
         </div>
@@ -2547,9 +2563,11 @@
   function getChk(id) { return document.getElementById(id)?.checked || false; }
 
     // ── Controle de Fotos do Aparelho/Serviço ──
-  let _osFotosTemp = [];
+  let _osFotosTemp = []; // Legacy
+  let _osFotosAntesTemp = [];
+  let _osFotosDepoisTemp = [];
 
-  function manipularFotosOS(event) {
+  function manipularFotosOS(event, tipo = 'geral') {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -2584,9 +2602,11 @@
           
           // Qualidade 0.7 para manter o payload pequeno (aprox. 50kb-100kb por foto)
           const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          _osFotosTemp.push(dataUrl);
+          if (tipo === 'antes') _osFotosAntesTemp.push(dataUrl);
+          else if (tipo === 'depois') _osFotosDepoisTemp.push(dataUrl);
+          else _osFotosTemp.push(dataUrl);
           
-          desenharFotosPreview();
+          desenharFotosPreview(tipo);
         };
         img.src = e.target.result;
       };
@@ -2595,20 +2615,58 @@
     event.target.value = '';
   }
 
-  function desenharFotosPreview() {
-    const container = document.getElementById('osFotosPreviewContainer');
-    if (!container) return;
-    container.innerHTML = _osFotosTemp.map((foto, idx) => `
-      <div style="position:relative;width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330">
-        <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
-        <button type="button" onclick="removerFotoOS(${idx})" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(224,84,84,0.9);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold">×</button>
-      </div>
-    `).join('');
+  function desenharFotosPreview(tipo) {
+    if (tipo === 'antes' || !tipo) {
+      const container = document.getElementById('osFotosAntesPreviewContainer');
+      if (container) {
+        container.innerHTML = _osFotosAntesTemp.map((foto, idx) => `
+          <div style="position:relative;width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330">
+            <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+            <button type="button" onclick="removerFotoOS(${idx}, 'antes')" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(224,84,84,0.9);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold">×</button>
+          </div>
+        `).join('');
+      }
+    }
+    if (tipo === 'depois' || !tipo) {
+      const container = document.getElementById('osFotosDepoisPreviewContainer');
+      if (container) {
+        container.innerHTML = _osFotosDepoisTemp.map((foto, idx) => `
+          <div style="position:relative;width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330">
+            <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+            <button type="button" onclick="removerFotoOS(${idx}, 'depois')" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(224,84,84,0.9);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold">×</button>
+          </div>
+        `).join('');
+      }
+    }
+    if (tipo === 'geral' || !tipo) {
+      const container = document.getElementById('osFotosPreviewContainer');
+      const containerWrapper = document.getElementById('osFotosLegacyContainer');
+      if (container && containerWrapper) {
+        if (_osFotosTemp.length > 0) {
+          containerWrapper.style.display = 'block';
+          container.innerHTML = _osFotosTemp.map((foto, idx) => `
+            <div style="position:relative;width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330">
+              <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+              <button type="button" onclick="removerFotoOS(${idx}, 'geral')" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(224,84,84,0.9);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold">×</button>
+            </div>
+          `).join('');
+        } else {
+          containerWrapper.style.display = 'none';
+          container.innerHTML = '';
+        }
+      }
+    }
   }
 
-  function removerFotoOS(idx) {
-    _osFotosTemp.splice(idx, 1);
-    desenharFotosPreview();
+  function removerFotoOS(idx, tipo) {
+    if (tipo === 'antes') {
+      _osFotosAntesTemp.splice(idx, 1);
+    } else if (tipo === 'depois') {
+      _osFotosDepoisTemp.splice(idx, 1);
+    } else {
+      _osFotosTemp.splice(idx, 1);
+    }
+    desenharFotosPreview(tipo);
   }
 
   function abrirFotoVisualizador(src) {
@@ -2709,6 +2767,8 @@
         previsaoEntrega:document.getElementById('previsaoEntrega').value,
         observacoes:    document.getElementById('observacoes').value.trim(),
         fotos:          _osFotosTemp,
+        fotosAntes:     _osFotosAntesTemp,
+        fotosDepois:    _osFotosDepoisTemp,
       });
       osExistente.historico = osExistente.historico || [];
       osExistente.historico.push(`${today()} — OS editada manualmente.`);
@@ -2820,6 +2880,8 @@
       observacoes:    document.getElementById('observacoes').value.trim(),
       estadoVisual:   '',
       fotos:          _osFotosTemp,
+      fotosAntes:     _osFotosAntesTemp,
+      fotosDepois:    _osFotosDepoisTemp,
       historico: [`${today()} — OS criada. Status: Aguardando.`],
     };
 
@@ -2832,7 +2894,11 @@
 
   function limparForm() {
     _osFotosTemp = [];
-    desenharFotosPreview();
+    _osFotosAntesTemp = [];
+    _osFotosDepoisTemp = [];
+    desenharFotosPreview('geral');
+    desenharFotosPreview('antes');
+    desenharFotosPreview('depois');
     document.getElementById('osEditandoId').value = '';
     document.getElementById('novaOSTitulo').textContent = 'Nova Ordem de Serviço';
     ['nomeCliente','telefone','cpf','rg','endereco','bairro','cidade','email',
@@ -3116,7 +3182,11 @@
     set('defeitoRelatado', os.defeitoRelatado);
     set('observacoes', os.observacoes);
     _osFotosTemp = os.fotos || [];
-    desenharFotosPreview();
+    _osFotosAntesTemp = os.fotosAntes || [];
+    _osFotosDepoisTemp = os.fotosDepois || [];
+    desenharFotosPreview('geral');
+    desenharFotosPreview('antes');
+    desenharFotosPreview('depois');
     atualizarLucroOS();
 
     showPage('nova-os');
@@ -3261,8 +3331,28 @@
       </div>
       ${os.observacoes ? `<div style="margin-bottom:12px;font-size:14px"><span style="color:var(--text-muted)">Obs. internas:</span><br>${os.observacoes}</div>` : ''}
 
+      ${os.fotosAntes && os.fotosAntes.length ? `
+      <div class="section-title">Fotos ANTES do Serviço</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        ${os.fotosAntes.map(foto => `
+          <div style="width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
+            <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      ${os.fotosDepois && os.fotosDepois.length ? `
+      <div class="section-title">Fotos DEPOIS do Serviço</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        ${os.fotosDepois.map(foto => `
+          <div style="width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
+            <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+          </div>
+        `).join('')}
+      </div>` : ''}
+
       ${os.fotos && os.fotos.length ? `
-      <div class="section-title">Fotos do Aparelho / Serviço</div>
+      <div class="section-title">Fotos Gerais / Antigas</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         ${os.fotos.map(foto => `
           <div style="width:90px;height:90px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
@@ -5266,9 +5356,33 @@
               ${badgeHTML(os.status)}
             </div>
 
+            ${os.fotosAntes && os.fotosAntes.length ? `
+            <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
+              <div style="margin-bottom: 8px; font-weight: bold; color:var(--text); text-transform: uppercase;">Fotos ANTES do Serviço</div>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+                ${os.fotosAntes.map(foto => `
+                  <div style="width:80px;height:80px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
+                    <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+                  </div>
+                `).join('')}
+              </div>
+            </div>` : ''}
+
+            ${os.fotosDepois && os.fotosDepois.length ? `
+            <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
+              <div style="margin-bottom: 8px; font-weight: bold; color:var(--text); text-transform: uppercase;">Fotos DEPOIS do Serviço</div>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+                ${os.fotosDepois.map(foto => `
+                  <div style="width:80px;height:80px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
+                    <img src="${foto}" style="width:100%;height:100%;object-fit:cover" />
+                  </div>
+                `).join('')}
+              </div>
+            </div>` : ''}
+
             ${os.fotos && os.fotos.length ? `
             <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
-              <div style="margin-bottom: 8px; font-weight: bold; color:var(--text); text-transform: uppercase;">Fotos do Aparelho / Serviço</div>
+              <div style="margin-bottom: 8px; font-weight: bold; color:var(--text); text-transform: uppercase;">Fotos Gerais / Antigas</div>
               <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px">
                 ${os.fotos.map(foto => `
                   <div style="width:80px;height:80px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:#1e2330;cursor:pointer" onclick="abrirFotoVisualizador('${foto}')">
