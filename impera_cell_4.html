@@ -1176,19 +1176,19 @@
 </main>
 
 <!-- MODAL USUARIO -->
-<div class="modal" id="modalUsuario">
-  <div class="modal-content" style="max-width:500px">
+<div class="modal-overlay" id="modalUsuario">
+  <div class="modal" style="width:100%;max-width:560px">
     <div class="modal-header">
-      <h3 id="modalUsuarioTitulo">Novo Usuário</h3>
-      <button class="close-btn" onclick="document.getElementById('modalUsuario').classList.remove('open')">×</button>
+      <span class="modal-title" id="modalUsuarioTitulo">Novo Usuário</span>
+      <button class="modal-close" onclick="document.getElementById('modalUsuario').classList.remove('open')">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="form-grid" style="margin-bottom:16px">
       <input type="hidden" id="userId" />
-      <div class="form-group">
+      <div class="form-group full">
         <label>Nome Completo</label>
         <input type="text" id="userName" placeholder="Ex: João Silva" />
       </div>
-      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group full" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
           <label>Nome de Usuário (Login)</label>
           <input type="text" id="userLogin" placeholder="Ex: joao.silva" />
@@ -1198,7 +1198,7 @@
           <input type="password" id="userPin" placeholder="Sua senha secreta" />
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group full">
         <label>Cargo (Perfil)</label>
         <select id="userRole">
           <option value="tecnico">Técnico (Acesso Padrão)</option>
@@ -1207,7 +1207,7 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group full">
         <label>Permissões Customizadas</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;background:var(--surface2);padding:12px;border-radius:6px;border:1px solid var(--border)">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="perm_editOS"> Pode Salvar/Editar OS</label>
@@ -1221,9 +1221,9 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer" style="margin-top:20px;display:flex;justify-content:flex-end;gap:12px">
-      <button class="btn btn-secondary" onclick="document.getElementById('modalUsuario').classList.remove('open')">Cancelar</button>
+    <div class="actions-row">
       <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('modalUsuario').classList.remove('open')">Cancelar</button>
     </div>
   </div>
 </div>
