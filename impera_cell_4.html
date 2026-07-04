@@ -3282,6 +3282,13 @@
       <div style="font-size:13px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px">
         ${(os.historico || []).map(h => `<div>• ${h}</div>`).join('')}
       </div>
+
+      ${os.feedbackCliente ? `
+      <div class="section-title" style="margin-top:16px; color:var(--success)">Feedback do Cliente</div>
+      <div style="font-size:14px; background:rgba(0,255,100,0.1); padding:12px; border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--text);">
+        "${os.feedbackCliente}"
+      </div>
+      ` : ''}
     `;
 
     document.getElementById('modalOSActions').innerHTML = `
@@ -5261,6 +5268,23 @@
               <div style="margin-bottom: 8px; font-weight: bold; color:var(--text);">Histórico</div>
               ${(os.historico || []).map(h => `<div style="margin-bottom:4px;">• ${h}</div>`).join('')}
             </div>
+
+            <div id="feedbackArea" style="margin-top:32px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); text-align: left;">
+              <h3 style="color:var(--accent); margin-bottom: 8px; font-size: 15px;">Compartilhe sua experiência</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin-bottom: 8px; line-height: 1.4;">
+                Na Impéra Cell, buscamos oferecer um atendimento de excelência e serviços com qualidade. Se desejar, deixe seu feedback sobre sua experiência conosco.<br><br>
+                Seu comentário é muito importante e contribui para que continuemos evoluindo e atendendo nossos clientes da melhor forma possível.<br><br>
+                Muito obrigado pela sua confiança e preferência!
+              </p>
+              ${os.feedbackCliente 
+                ? `<div style="margin-top:12px; padding:12px; background:rgba(0,255,100,0.1); border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--success); text-align:center;">
+                     <strong style="font-size:14px;">Feedback enviado! Muito obrigado.</strong>
+                   </div>` 
+                : `<textarea id="feedbackTexto" rows="3" placeholder="Digite seu comentário aqui..." style="width:100%; margin-top:8px; margin-bottom:12px; font-family:inherit; padding:8px; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);"></textarea>
+                   <button id="btnEnviarFeedback" class="btn btn-primary" style="width:100%;" onclick="enviarFeedbackCliente(${os.id})">Enviar Feedback</button>`
+              }
+            </div>
+
           </div>
         `;
       } else {
@@ -5274,6 +5298,45 @@
     if (typeof renderDashboard === 'function') renderDashboard();
     if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
   });
+
+  async function enviarFeedbackCliente(id) {
+    const textEl = document.getElementById('feedbackTexto');
+    if(!textEl) return;
+    const text = textEl.value.trim();
+    if(!text) { alert('Por favor, escreva algo antes de enviar.'); return; }
+    
+    const btn = document.getElementById('btnEnviarFeedback');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const data = getData();
+      const os = data.ordens.find(o => o.id === id);
+      if(!os) throw new Error('OS não encontrada');
+
+      os.feedbackCliente = text;
+      
+      // Salva no localStorage
+      localStorage.setItem('imperaCellOS', JSON.stringify(data));
+      
+      if(typeof _sbUpsert === 'function' && typeof _useSupabase !== 'undefined' && _useSupabase) {
+        await _sbUpsert('ordens', [_osToRow(os)]);
+      }
+      
+      document.getElementById('feedbackArea').innerHTML = `
+        <h3 style="color:var(--accent); margin-bottom: 8px; font-size: 15px;">Compartilhe sua experiência</h3>
+        <div style="margin-top:12px; padding:12px; background:rgba(0,255,100,0.1); border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--success); text-align:center;">
+          <strong style="font-size:14px;">Feedback enviado! Muito obrigado.</strong>
+        </div>
+      `;
+    } catch(e) {
+      console.error(e);
+      alert('Erro ao enviar feedback.');
+      btn.disabled = false;
+      btn.textContent = 'Enviar Feedback';
+    }
+  }
+
 </script>
 </body>
 </html>
