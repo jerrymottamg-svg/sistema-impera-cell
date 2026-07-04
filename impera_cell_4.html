@@ -5349,7 +5349,8 @@
             <p style="color:var(--text-muted); margin-bottom: 4px;">Cliente: ${os.nomeCliente}</p>
             <p style="color:var(--text-muted); margin-bottom: 4px;">Aparelho: ${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</p>
             <p style="color:var(--text-muted); margin-bottom: 4px;">Serviço: ${os.servicoRealizado || os.tipoManutencao || 'Não especificado'}</p>
-            <p style="color:var(--text-muted); margin-bottom: 8px;">Valor do Serviço: <strong style="color:var(--gold)">${formatMoney(os.valorServico || 0)}</strong></p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Valor do Serviço: <strong style="color:var(--gold)">${formatMoney(os.valorServico || 0)}</strong></p>
+            ${os.pago ? `<p style="color:var(--success); margin-bottom: 8px; font-weight:bold;">✅ PAGO ${os.formaPagamento ? '<span style="font-size:12px; font-weight:normal;">(' + os.formaPagamento + ')</span>' : ''}</p>` : ''}
             
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);">
               <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Status Atual</div>
