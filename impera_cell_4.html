@@ -5163,24 +5163,55 @@
       const data = getData();
       const os = data.ordens.find(o => o.id === Number(trackId));
       const isTrocaTela = (os.tipoManutencao || '').toLowerCase().includes('tela') || (os.servicoRealizado || '').toLowerCase().includes('tela');
-      const showGarantia = isTrocaTela && ['Concluído', 'Entregue'].includes(os.status);
-      const garantiaHtml = showGarantia ? `
-        <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
-          <p><strong>Olá ${os.nomeCliente}! Seu aparelho teve a tela substituída e já está pronto para uso.</strong></p>
-          <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
-          <p>✅ A garantia da tela é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
-          <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
-          <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
-            <li>Tela quebrada, trincada ou rachada;</li>
-            <li>Danos causados por quedas, impactos ou pressão;</li>
-            <li>Contato com água ou qualquer outro líquido;</li>
-            <li>Mau uso ou tentativa de reparo por terceiros.</li>
-          </ul>
-          <p style="margin-top:12px;">Para aumentar a vida útil da nova tela, recomendamos utilizar uma película de proteção e uma capa de boa qualidade, além de evitar quedas e contato com líquidos.<br><strong>A tela já vai com uma película de brinde.</strong></p>
-          <p style="margin-top:12px;">Em caso de qualquer dúvida ou se notar algum problema dentro do período de garantia, entre em contato conosco antes de levar o aparelho a outra assistência.</p>
-          <p style="margin-top:12px;">Agradecemos pela confiança em nosso trabalho!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
-        </div>
-      ` : '';
+      const isTrocaBateria = (os.tipoManutencao || '').toLowerCase().includes('bateria') || (os.servicoRealizado || '').toLowerCase().includes('bateria');
+      const isConcluidoOuEntregue = ['Concluído', 'Entregue'].includes(os.status);
+      
+      let garantiaHtml = '';
+      if (isConcluidoOuEntregue) {
+        if (isTrocaTela) {
+          garantiaHtml += `
+            <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
+              <p><strong>Olá ${os.nomeCliente}! Seu aparelho teve a tela substituída e já está pronto para uso.</strong></p>
+              <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
+              <p>✅ A garantia da tela é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
+              <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
+              <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+                <li>Tela quebrada, trincada ou rachada;</li>
+                <li>Danos causados por quedas, impactos ou pressão;</li>
+                <li>Contato com água ou qualquer outro líquido;</li>
+                <li>Mau uso ou tentativa de reparo por terceiros.</li>
+              </ul>
+              <p style="margin-top:12px;">Para aumentar a vida útil da nova tela, recomendamos utilizar uma película de proteção e uma capa de boa qualidade, além de evitar quedas e contato com líquidos.<br><strong>A tela já vai com uma película de brinde.</strong></p>
+              <p style="margin-top:12px;">Em caso de qualquer dúvida ou se notar algum problema dentro do período de garantia, entre em contato conosco antes de levar o aparelho a outra assistência.</p>
+              <p style="margin-top:12px;">Agradecemos pela confiança em nosso trabalho!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
+            </div>
+          `;
+        }
+        if (isTrocaBateria) {
+          garantiaHtml += `
+            <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
+              <p><strong>Olá ${os.nomeCliente}! A bateria do seu aparelho foi substituída e o serviço foi concluído com sucesso.</strong></p>
+              <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
+              <p>✅ A garantia da bateria é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
+              <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
+              <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+                <li>Contato com água ou qualquer outro líquido;</li>
+                <li>Uso de carregadores ou cabos de baixa qualidade ou incompatíveis;</li>
+                <li>Danos provocados por sobrecarga elétrica;</li>
+                <li>Mau uso ou tentativa de reparo por terceiros.</li>
+              </ul>
+              <p style="margin-top:12px;"><strong>Recomendações:</strong></p>
+              <ul style="margin-left: 20px; margin-top:4px; margin-bottom: 0;">
+                <li>Utilize carregadores e cabos de boa qualidade.</li>
+                <li>Evite descarregar completamente a bateria com frequência.</li>
+                <li>Não exponha o aparelho ao calor excessivo.</li>
+              </ul>
+              <p style="margin-top:12px;">Caso perceba qualquer anormalidade dentro do período de garantia, entre em contato conosco antes de levar o aparelho a outra assistência.</p>
+              <p style="margin-top:12px;">Agradecemos pela confiança!<br><strong>Impéra Cell – Assistência Técnica</strong></p>
+            </div>
+          `;
+        }
+      }
 
       if(os) {
         document.getElementById('trackingOverlay').innerHTML = `
