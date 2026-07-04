@@ -2889,7 +2889,7 @@
     tbody.innerHTML = os.map(o => `
       <tr>
         <td class="os-num" style="cursor:pointer" onclick="verOS(${o.id})">#${String(o.id).padStart(4,'0')}</td>
-        <td>${o.nomeCliente}</td>
+        <td>${o.nomeCliente} ${o.feedbackCliente ? '<span title="Possui feedback do cliente!" style="cursor:help;">💬</span>' : ''}</td>
         <td>${o.marca ? o.marca+' ' : ''}${o.modeloAparelho}</td>
         <td>${o.tipoManutencao}</td>
         <td>${o.tecnico || '—'}</td>
@@ -5316,8 +5316,11 @@
 
       os.feedbackCliente = text;
       
-      // Salva no localStorage
-      localStorage.setItem('imperaCellOS', JSON.stringify(data));
+      // Salva no localStorage localmente mantendo a estrutura esperada
+      const localOS = JSON.parse(localStorage.getItem('imperaCellOS') || '{"ordens":[],"nextId":1}');
+      const localIdx = localOS.ordens.findIndex(o => o.id === id);
+      if (localIdx >= 0) localOS.ordens[localIdx].feedbackCliente = text;
+      localStorage.setItem('imperaCellOS', JSON.stringify(localOS));
       
       if(typeof _sbUpsert === 'function' && typeof _useSupabase !== 'undefined' && _useSupabase) {
         await _sbUpsert('ordens', [_osToRow(os)]);
