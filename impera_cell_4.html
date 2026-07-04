@@ -3705,9 +3705,10 @@
       if (!confirm(`Deseja realmente excluir o cliente "${nome}" e TODAS as suas Ordens de Serviço associadas?\n\nEssa ação não pode ser desfeita.`)) return;
       
       const data = getData();
-      const ordensDoCliente = data.ordens.filter(o => o.nomeCliente === nome);
+      const targetName = String(nome).toLowerCase().trim();
+      const ordensDoCliente = data.ordens.filter(o => String(o.nomeCliente || '').toLowerCase().trim() === targetName);
       const antes = data.ordens.length;
-      data.ordens = data.ordens.filter(o => o.nomeCliente !== nome);
+      data.ordens = data.ordens.filter(o => String(o.nomeCliente || '').toLowerCase().trim() !== targetName);
       const deletadas = antes - data.ordens.length;
       
       saveData(data);
