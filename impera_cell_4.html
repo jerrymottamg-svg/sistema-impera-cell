@@ -1022,6 +1022,7 @@
               <th>CPF</th>
               <th>Total de OS</th>
               <th>Última OS</th>
+              <th style="width:60px;text-align:center">Ações</th>
             </tr>
           </thead>
           <tbody id="clientesBody"></tbody>
@@ -3687,8 +3688,30 @@
         <td>${c.cpf || '—'}</td>
         <td><span style="color:var(--gold);font-weight:700">${c.count}</span></td>
         <td>${c.ultima}</td>
+        <td style="text-align:center">
+          <button class="btn btn-sm btn-danger" onclick="excluirCliente('${c.nome.replace(/'/g, "\\'")}')" title="Excluir Cliente e suas OS">🗑️</button>
+        </td>
       </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum cliente cadastrado.</td></tr>';
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum cliente cadastrado.</td></tr>';
+  }
+
+  function excluirCliente(nome) {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { 
+      toast('❌ Você não tem permissão para excluir registros.', true); 
+      return; 
+    }
+    if (!confirm(`Deseja realmente excluir o cliente "${nome}" e TODAS as suas Ordens de Serviço associadas?\n\nEssa ação não pode ser desfeita.`)) return;
+    
+    const data = getData();
+    const antes = data.ordens.length;
+    data.ordens = data.ordens.filter(o => o.nomeCliente !== nome);
+    const deletadas = antes - data.ordens.length;
+    
+    saveData(data);
+    toast(`✅ Cliente excluído! (${deletadas} OS removidas)`);
+    renderClientes();
+    renderListaOS();
+    renderDashboard();
   }
 
   // ── Imprimir OS — versão completa abaixo no script ──
