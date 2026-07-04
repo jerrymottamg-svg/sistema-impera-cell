@@ -3660,6 +3660,7 @@
     const data = getData();
     data.ordens = data.ordens.filter(o => o.id !== id);
     saveData(data);
+    if (_useSupabase) _sbDelete('ordens', id);
     closeModal('modalOS');
     toast('OS excluída.');
     renderListaOS();
@@ -3695,24 +3696,33 @@
     `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum cliente cadastrado.</td></tr>';
   }
 
-  function excluirCliente(nome) {
-    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { 
-      toast('❌ Você não tem permissão para excluir registros.', true); 
-      return; 
+  window.excluirCliente = function(nome) {
+    try {
+      if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { 
+        toast('❌ Você não tem permissão para excluir registros.', true); 
+        return; 
+      }
+      if (!confirm(`Deseja realmente excluir o cliente "${nome}" e TODAS as suas Ordens de Serviço associadas?\n\nEssa ação não pode ser desfeita.`)) return;
+      
+      const data = getData();
+      const ordensDoCliente = data.ordens.filter(o => o.nomeCliente === nome);
+      const antes = data.ordens.length;
+      data.ordens = data.ordens.filter(o => o.nomeCliente !== nome);
+      const deletadas = antes - data.ordens.length;
+      
+      saveData(data);
+      if (_useSupabase) {
+        ordensDoCliente.forEach(o => _sbDelete('ordens', o.id));
+      }
+      
+      toast(`✅ Cliente excluído! (${deletadas} OS removidas)`);
+      renderClientes();
+      renderListaOS();
+      renderDashboard();
+    } catch (e) {
+      toast('❌ Erro ao excluir: ' + e.message, true);
     }
-    if (!confirm(`Deseja realmente excluir o cliente "${nome}" e TODAS as suas Ordens de Serviço associadas?\n\nEssa ação não pode ser desfeita.`)) return;
-    
-    const data = getData();
-    const antes = data.ordens.length;
-    data.ordens = data.ordens.filter(o => o.nomeCliente !== nome);
-    const deletadas = antes - data.ordens.length;
-    
-    saveData(data);
-    toast(`✅ Cliente excluído! (${deletadas} OS removidas)`);
-    renderClientes();
-    renderListaOS();
-    renderDashboard();
-  }
+  };
 
   // ── Imprimir OS — versão completa abaixo no script ──
   // function imprimirOS foi substituída
