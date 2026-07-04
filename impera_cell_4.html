@@ -914,7 +914,7 @@
           <label>Valor do Serviço (R$)</label>
           <input type="number" id="valorServico" placeholder="0,00" min="0" step="0.01" oninput="atualizarLucroOS()" />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="wrap-custo-servico">
           <label>Custo (R$)</label>
           <input type="number" id="custoServico" placeholder="0,00" min="0" step="0.01" oninput="atualizarLucroOS()" />
           <small id="lucroOSPreview" style="color:var(--text-muted);font-size:11px;margin-top:4px;display:block"></small>
@@ -1953,6 +1953,7 @@
     setDisplay('tab-estoque', p.viewEstoque);
     setDisplay('tab-financeiro', p.viewCaixa);
     setDisplay('tab-usuarios', isAdmin);
+    setDisplay('wrap-custo-servico', isAdmin);
     
     // Redireciona se estiver em página que perdeu acesso
     const activePage = document.querySelector('.page.active');
@@ -3087,7 +3088,7 @@
             <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="imprimirOS(${o.id})">🖨</button>
             ${o.pago
               ? `<button class="btn btn-sm" style="background:#0d2b1f;border:1px solid var(--success);color:var(--success)" onclick="desmarcarPagamentoOS(${o.id})" title="Clique para desmarcar pagamento">✅ Pago</button>
-                 ${(parseFloat(o.custoServico)||0) > 0 && !custosLancados.has(o.id) ? `<button class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 6px" onclick="lancarCustoPendente(${o.id})" title="Custo não lançado no financeiro">⚠️ Custo</button>` : ''}`
+                 ${(parseFloat(o.custoServico)||0) > 0 && !custosLancados.has(o.id) && currentUser?.role === 'admin' ? `<button class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 6px" onclick="lancarCustoPendente(${o.id})" title="Custo não lançado no financeiro">⚠️ Custo</button>` : ''}`
               : `<button class="btn btn-sm btn-primary" style="font-size:11px" onclick="abrirModalPagamentoOS(${o.id})">💳 Pago</button>`
             }
           </div>
@@ -3441,7 +3442,7 @@
         <div><span style="color:var(--text-muted)">Tipo:</span> ${os.tipoManutencao}</div>
         <div><span style="color:var(--text-muted)">Técnico:</span> ${os.tecnico || '—'}</div>
         <div><span style="color:var(--text-muted)">Valor:</span> <strong style="color:var(--gold)">${formatMoney(os.valorServico)}</strong></div>
-        ${os.custoServico > 0 ? `<div><span style="color:var(--text-muted)">Custo:</span> <strong style="color:var(--danger)">− ${formatMoney(os.custoServico)}</strong></div>
+        ${os.custoServico > 0 && currentUser?.role === 'admin' ? `<div><span style="color:var(--text-muted)">Custo:</span> <strong style="color:var(--danger)">− ${formatMoney(os.custoServico)}</strong></div>
         <div><span style="color:var(--text-muted)">Lucro:</span> <strong style="color:var(--success)">${formatMoney((parseFloat(os.valorServico)||0)-(parseFloat(os.custoServico)||0))}</strong></div>` : ''}
         <div><span style="color:var(--text-muted)">Entrada:</span> ${os.dataEntrada}</div>
         <div><span style="color:var(--text-muted)">Previsão:</span> ${os.previsaoEntrega ? new Date(os.previsaoEntrega+'T12:00').toLocaleDateString('pt-BR') : '—'}</div>
