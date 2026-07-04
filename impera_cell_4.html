@@ -3283,12 +3283,16 @@
         ${(os.historico || []).map(h => `<div>• ${h}</div>`).join('')}
       </div>
 
+      <div class="section-title" style="margin-top:16px;">Feedback do Cliente</div>
       ${os.feedbackCliente ? `
-      <div class="section-title" style="margin-top:16px; color:var(--success)">Feedback do Cliente</div>
-      <div style="font-size:14px; background:rgba(0,255,100,0.1); padding:12px; border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--text);">
-        "${os.feedbackCliente}"
+      <div style="font-size:14px; background:rgba(0,255,100,0.1); padding:12px; border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--success);">
+        <strong>"${os.feedbackCliente}"</strong>
       </div>
-      ` : ''}
+      ` : `
+      <div style="font-size:13px; color:var(--text-muted); font-style:italic;">
+        Nenhum feedback enviado pelo cliente até o momento.
+      </div>
+      `}
     `;
 
     document.getElementById('modalOSActions').innerHTML = `
