@@ -1395,6 +1395,10 @@
         <label>Quantidade *</label>
         <input type="number" id="vendaQuantidade" min="1" step="1" value="1" oninput="atualizarTotalVenda()" />
       </div>
+      <div class="form-group">
+        <label>Desconto (R$)</label>
+        <input type="number" id="vendaDesconto" min="0" step="0.01" placeholder="0,00" value="0" oninput="atualizarTotalVenda()" />
+      </div>
       <div class="form-group full" id="vendaFormaSimplesWrap">
         <label>Forma de Pagamento *</label>
         <select id="vendaFormaPagamento">
@@ -4131,6 +4135,7 @@
     document.getElementById('vendaDescricao').value = v.descricao;
     document.getElementById('vendaPreco').value = v.preco;
     document.getElementById('vendaQuantidade').value = v.quantidade;
+    document.getElementById('vendaDesconto').value = v.desconto || 0;
     document.getElementById('vendaData').value = v.data;
 
     if (v.pagamentos && v.pagamentos.length > 1) {
@@ -4159,7 +4164,8 @@
   function atualizarTotalVenda() {
     const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
     const qtd = parseInt(document.getElementById('vendaQuantidade').value) || 0;
-    document.getElementById('vendaTotalPreview').textContent = formatMoney(preco * qtd);
+    const desc = parseFloat(document.getElementById('vendaDesconto').value) || 0;
+    document.getElementById('vendaTotalPreview').textContent = formatMoney((preco * qtd) - desc);
     if (document.getElementById('vendaPagamentoDividido').checked) {
       sincronizarValor2();
     }
@@ -4173,6 +4179,7 @@
     const descricao = document.getElementById('vendaDescricao').value.trim();
     const preco = parseFloat(document.getElementById('vendaPreco').value);
     const quantidade = parseInt(document.getElementById('vendaQuantidade').value);
+    const desconto = parseFloat(document.getElementById('vendaDesconto').value) || 0;
     const formaPagamento = document.getElementById('vendaFormaPagamento').value;
     const data = document.getElementById('vendaData').value;
     const editId = document.getElementById('vendaEditId').value;
@@ -4184,7 +4191,7 @@
       return;
     }
 
-    const total = preco * quantidade;
+    const total = (preco * quantidade) - desconto;
     
     if (isDiv) {
       const pag1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
@@ -4199,7 +4206,7 @@
     const vendedorEscolhido = document.getElementById('vendaVendedor') ? document.getElementById('vendaVendedor').value : (currentUser ? currentUser.name : '');
 
     let vData = { 
-      descricao, preco, quantidade, total, formaPagamento, data, vendedor: vendedorEscolhido 
+      descricao, preco, quantidade, desconto, total, formaPagamento, data, vendedor: vendedorEscolhido 
     };
     if (isDiv) {
       const f1 = document.getElementById('vendaFormaPagamento1').value;
