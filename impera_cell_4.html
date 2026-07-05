@@ -1065,15 +1065,23 @@
   <div class="page" id="page-financeiro">
     <div class="stats-grid" id="finStats"></div>
     <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="icon">💰</span> Lançamentos</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-danger btn-sm" onclick="excluirTodosLancamentos()">🗑 Excluir Todos</button>
+      <div class="card-header" style="flex-wrap:wrap">
+        <div class="card-title"><span class="icon">💰</span> Módulo Financeiro</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-danger btn-sm" onclick="excluirTodosLancamentos()">🗑 Excluir Tudo</button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalLancamento()">+ Novo Lançamento</button>
         </div>
       </div>
+      
+      <div class="tabs" style="margin-bottom:16px;border-bottom:1px solid var(--border)">
+        <button class="tab active" onclick="showFinTab('extrato')">Extrato Geral</button>
+        <button class="tab" onclick="showFinTab('futuro')">A Pagar / Receber</button>
+        <button class="tab" onclick="showFinTab('dre')">DRE Mensal</button>
+      </div>
 
-      <!-- Filtros -->
+      <!-- Extrato e Futuro Containers -->
+      <div id="fin-tab-extrato" class="fin-subpage active" style="display:block">
+      <!-- Filtros Extrato -->
       <div style="padding:0 0 16px;display:flex;flex-direction:column;gap:10px">
 
         <!-- Linha 1: busca + tipo -->
@@ -1126,12 +1134,46 @@
 
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Saída/Custo</th><th>Entrada/Valor</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Saída/Custo</th><th>Entrada/Valor</th><th>Ações</th></tr></thead>
           <tbody id="finBody"></tbody>
         </table>
       </div>
+      </div> <!-- Fim Extrato -->
+      
+      <!-- Inicio Futuro -->
+      <div id="fin-tab-futuro" class="fin-subpage" style="display:none">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead>
+            <tbody id="finFuturoBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Inicio DRE -->
+      <div id="fin-tab-dre" class="fin-subpage" style="display:none">
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <input type="month" id="dreMes" onchange="renderDRE()" />
+        </div>
+        <div class="card" style="background:var(--surface);border:1px solid var(--border)">
+           <div id="dreBody" style="padding:16px;font-family:monospace;font-size:14px;line-height:1.6">
+              Selecione um mês para gerar o DRE.
+           </div>
+        </div>
+      </div>
+
     </div>
   </div>
+  
+  <script>
+    function showFinTab(tab) {
+      document.querySelectorAll('.fin-subpage').forEach(e => e.style.display = 'none');
+      document.querySelectorAll('#page-financeiro .tabs .tab').forEach(e => e.classList.remove('active'));
+      document.getElementById('fin-tab-' + tab).style.display = 'block';
+      event.currentTarget.classList.add('active');
+      if(tab === 'dre') renderDRE();
+    }
+  </script>
 
   <!-- ─── TABELA DE PREÇOS ─── -->
   <div class="page" id="page-tabela">
@@ -1350,11 +1392,34 @@
         <select id="finTipo" onchange="toggleFinCustoVisibility()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
       </div>
       <div class="form-group full"><label>Descrição *</label><input type="text" id="finDesc" placeholder="Ex: OS #0045 — Moto G82" /></div>
+      
+      <div class="form-group"><label>Status</label>
+        <select id="finStatus" onchange="toggleFinVencimento()"><option value="pago">Pago / Recebido</option><option value="pendente">Pendente (A Pagar/Receber)</option></select>
+      </div>
+      <div class="form-group"><label>Data de Vencimento</label><input type="date" id="finVencimento" disabled title="Apenas para contas pendentes" /></div>
+      
       <div class="form-group"><label>Categoria</label>
         <select id="finCat"><option>Serviço OS</option><option>Venda de Acessório</option><option>Compra de Peças</option><option>Aluguel</option><option>Energia / Água</option><option>Salário</option><option>Outros</option></select>
       </div>
+      <div class="form-group"><label>Forma de Pagamento</label>
+        <select id="finFp"><option>Dinheiro</option><option>Pix</option><option>Débito</option><option>Crédito</option></select>
+      </div>
       <div class="form-group"><label>Valor (R$) *</label><input type="number" id="finValor" placeholder="0,00" min="0" step="0.01" /></div>
       <div class="form-group" id="finCustoGroup"><label>Custo (R$)</label><input type="number" id="finCusto" placeholder="0,00" min="0" step="0.01" /></div>
+      
+      <!-- Parcelamento -->
+      <div class="form-group"><label>Parcelamento</label>
+        <select id="finParcelas" onchange="toggleFinParcelas()">
+          <option value="1">À Vista (1x)</option>
+          <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option>
+          <option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+          <option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Intervalo (dias)</label>
+        <input type="number" id="finIntervalo" value="30" min="1" disabled title="Dias entre parcelas" />
+      </div>
+
       <div class="form-group full">
         <label>Foto do Recibo / Comprovante</label>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -1907,6 +1972,12 @@
   }
 
   function _lancToRow(l) {
+    const extra = {
+      fp: l.formaPagamento || '',
+      status: l.status || 'pago',
+      vencimento: l.dataVencimento || l.data || '',
+      parcela: l.parcelaInfo || null
+    };
     return {
       id: l.id,
       data: l.data || '',
@@ -1915,13 +1986,18 @@
       tipo: l.tipo || 'entrada',
       valor: parseFloat(l.valor) || 0,
       custo: parseFloat(l.custo) || 0,
-      forma_pagamento: l.formaPagamento || '',
+      forma_pagamento: JSON.stringify(extra),
       os_id: l.osId || null,
       automatico: !!l.automatico,
     };
   }
 
   function _rowToLanc(row) {
+    let fp = row.forma_pagamento || '';
+    let extra = {};
+    if (fp.startsWith('{')) {
+      try { extra = JSON.parse(fp); fp = extra.fp; } catch(e){}
+    }
     return {
       id: row.id,
       data: row.data || '',
@@ -1930,7 +2006,10 @@
       tipo: row.tipo || 'entrada',
       valor: parseFloat(row.valor) || 0,
       custo: parseFloat(row.custo) || 0,
-      formaPagamento: row.forma_pagamento || '',
+      formaPagamento: fp,
+      status: extra.status || 'pago',
+      dataVencimento: extra.vencimento || row.data || '',
+      parcelaInfo: extra.parcela || null,
       osId: row.os_id || null,
       automatico: !!row.automatico,
     };
@@ -4454,19 +4533,47 @@
     const valor = parseFloat(document.getElementById('finValor').value);
     const data = document.getElementById('finData').value;
     if (!desc || !data || isNaN(valor) || valor <= 0) { toast('Preencha todos os campos.', true); return; }
-    const d = getFin();
+    
     const tipo = document.getElementById('finTipo').value;
+    const cat = document.getElementById('finCat').value;
+    const fp = document.getElementById('finFp').value;
+    const status = document.getElementById('finStatus').value;
+    let vencimento = document.getElementById('finVencimento').value || data;
+    if (status === 'pago') vencimento = data;
+    
+    const parcelas = parseInt(document.getElementById('finParcelas').value) || 1;
+    const intervalo = parseInt(document.getElementById('finIntervalo').value) || 30;
     const custo = tipo === 'entrada' ? (parseFloat(document.getElementById('finCusto').value) || 0) : 0;
-    d.lancamentos.push({
-      id: d.nextId++,
-      data,
-      desc,
-      categoria: document.getElementById('finCat').value,
-      tipo,
-      valor,
-      custo,
-      fotoRecibo: _finFotoTemp || null
-    });
+    
+    const d = getFin();
+    const valParcela = parseFloat((valor / parcelas).toFixed(2));
+    const custoParcela = parseFloat((custo / parcelas).toFixed(2));
+    
+    for (let i = 0; i < parcelas; i++) {
+      let dataP = new Date(vencimento + 'T12:00:00');
+      if (i > 0) {
+        dataP.setDate(dataP.getDate() + (intervalo * i));
+      }
+      const dataStr = dataP.toISOString().split('T')[0];
+      
+      let descP = parcelas > 1 ? `${desc} (Parc. ${i+1}/${parcelas})` : desc;
+      
+      d.lancamentos.push({
+        id: d.nextId++,
+        data: data,
+        desc: descP,
+        categoria: cat,
+        tipo,
+        valor: valParcela,
+        custo: custoParcela,
+        formaPagamento: fp,
+        status: status,
+        dataVencimento: dataStr,
+        parcelaInfo: parcelas > 1 ? `${i+1}/${parcelas}` : null,
+        fotoRecibo: _finFotoTemp || null
+      });
+    }
+    
     saveFin(d);
     closeModal('modalLancamento');
     toast('Lançamento salvo!');
@@ -4697,6 +4804,8 @@
         valor: parseFloat(v.total)||0,
         formaPagamento: v.formaPagamento,
         automatico: true,
+        status: 'pago',
+        dataVencimento: v.data
       };
     });
 
@@ -4706,23 +4815,26 @@
 
     // Filtro de período e busca aplicados na lista completa
     if (search) listaCompleta = listaCompleta.filter(l => l.desc.toLowerCase().includes(search) || l.categoria.toLowerCase().includes(search));
-    if (periodo) listaCompleta = listaCompleta.filter(l => l.data >= periodo.de && l.data <= periodo.ate);
+    
+    // Filtrar apenas os pagos (Extrato) para o filtro de data (usam l.data)
+    let extratoLista = listaCompleta.filter(l => (l.status || 'pago') === 'pago');
+    if (periodo) extratoLista = extratoLista.filter(l => l.data >= periodo.de && l.data <= periodo.ate);
 
     // Lista da tabela respeita também tipo e categoria
-    let lista = listaCompleta.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
+    let lista = extratoLista.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
+    
+    // Lista A Pagar/Receber
+    let futuroLista = listaCompleta.filter(l => (l.status || 'pago') === 'pendente').sort((a,b) => (a.dataVencimento||a.data).localeCompare(b.dataVencimento||b.data));
 
-    const entradas    = listaCompleta.filter(l => l.tipo === 'entrada').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
-    const custoEmbutido = listaCompleta.filter(l => l.tipo === 'entrada' && l.custo).reduce((s,l) => s+(parseFloat(l.custo)||0), 0);
+    const entradas    = extratoLista.filter(l => l.tipo === 'entrada').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const custoEmbutido = extratoLista.filter(l => l.tipo === 'entrada' && l.custo).reduce((s,l) => s+(parseFloat(l.custo)||0), 0);
     
-    // As "Sangrias de Caixa" não são despesas (são transferências de valores), 
-    // logo não devem abater do faturamento líquido.
-    const saidas = listaCompleta.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0) + custoEmbutido;
+    const saidas = extratoLista.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0) + custoEmbutido;
     
-    const totalOS     = listaCompleta.filter(l => l.categoria === 'Nota de Serviço').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
-    const totalVendas = listaCompleta.filter(l => l.categoria === 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const totalOS     = extratoLista.filter(l => l.categoria === 'Nota de Serviço').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+    const totalVendas = extratoLista.filter(l => l.categoria === 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
     const faturamentoBruto = totalOS + totalVendas;
     
-    // Faturamento Líquido = Bruto - Saídas (Despesas reais + Custos embutidos)
     const saldo = faturamentoBruto - saidas;
 
     // Label do período nos cards
@@ -4798,16 +4910,153 @@
       const colEntradaValor = l.tipo === 'entrada'
         ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>`
         : '<span style="color:var(--text-muted)">—</span>';
+        
+      const statusBadge = `<span class="badge badge-concluido">Pago</span>`;
+      
       return `<tr>
         <td>${dt}</td>
         <td>${l.desc}${pgto}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'Entrada':'Saída'}</span></td>
+        <td>${statusBadge}</td>
         <td>${colSaidaCusto}</td>
         <td>${colEntradaValor}</td>
         <td><div style="display:flex;gap:4px">${fotoBtn}${excluirBtn === '—' && !fotoBtn ? '—' : excluirBtn === '—' ? '' : excluirBtn}</div></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
+    
+    const tbodyFuturo = document.getElementById('finFuturoBody');
+    if (tbodyFuturo) tbodyFuturo.innerHTML = futuroLista.map(l => {
+      const dt = new Date((l.dataVencimento||l.data)+'T12:00').toLocaleDateString('pt-BR');
+      const pgto = l.formaPagamento ? `<br><span style="font-size:10px;color:var(--text-muted);background:var(--bg);padding:2px 4px;border-radius:4px;border:1px solid var(--border)">${l.formaPagamento}</span>` : '';
+      
+      const isAtrasado = (l.dataVencimento||l.data) < getLocalISO();
+      const statusBadge = isAtrasado ? `<span class="badge badge-danger">Atrasado</span>` : `<span class="badge badge-pendente" style="background:var(--accent)">Pendente</span>`;
+      const valorStr = l.tipo === 'entrada' ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>` : `<strong style="color:var(--danger)">- ${formatMoney(l.valor)}</strong>`;
+      
+      const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
+      const baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
+      
+      return `<tr>
+        <td style="${isAtrasado ? 'color:var(--danger)' : ''}">${dt}</td>
+        <td>${l.desc}${pgto}</td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
+        <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'A Receber':'A Pagar'}</span></td>
+        <td>${statusBadge}</td>
+        <td>${valorStr}</td>
+        <td><div style="display:flex;gap:4px">${baixarBtn}${excluirBtn==='—'?'':excluirBtn}</div></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhuma conta pendente! 🎉</td></tr>';
+  }
+  
+  function baixarLancamento(id) {
+    if (!confirm('Deseja dar baixa neste lançamento? Ele será liquidado no dia de hoje.')) return;
+    const d = getFin();
+    const l = d.lancamentos.find(x => x.id == id);
+    if (!l) {
+        // if automatic from vendas, we need to find it in Vendas
+        if (id.toString().startsWith('venda-')) {
+            const vid = Number(id.replace('venda-', ''));
+            const vd = getVendas();
+            const v = vd.vendas.find(x => x.id === vid);
+            if(v) {
+                v.status = 'pago';
+                v.data = getLocalISO(); // data de baixa = hoje
+                saveVendas(vd);
+                toast('Baixa realizada com sucesso!');
+                renderFinanceiro();
+            }
+        }
+        return;
+    }
+    l.status = 'pago';
+    l.data = getLocalISO(); // data do pagamento
+    saveFin(d);
+    toast('Baixa realizada com sucesso!');
+    renderFinanceiro();
+  }
+  
+  function renderDRE() {
+     const mesRef = document.getElementById('dreMes')?.value || getLocalISO().substring(0,7);
+     if(document.getElementById('dreMes') && !document.getElementById('dreMes').value) {
+         document.getElementById('dreMes').value = mesRef;
+     }
+     
+     const d = getFin();
+     const dv = getVendas();
+     
+     // Construir array com tudo do mês e pago
+     let listaCompleta = [...d.lancamentos, ...dv.vendas.map(v => ({
+      data: v.data,
+      desc: v.descricao,
+      categoria: v.isRetirada ? 'Sangria de Caixa' : 'Venda de Produto',
+      tipo: v.isRetirada ? 'saida' : 'entrada',
+      valor: parseFloat(v.total)||0,
+      custo: parseFloat(v.custo)||0, // vendas nao tem custo nativo na forma antiga, entao 0
+      status: v.status || 'pago'
+     }))];
+     
+     listaCompleta = listaCompleta.filter(l => (l.status || 'pago') === 'pago' && l.data.startsWith(mesRef));
+     
+     const rBrutaServicos = listaCompleta.filter(l => l.categoria === 'Nota de Serviço').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     const rBrutaVendas = listaCompleta.filter(l => l.categoria === 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     const rBrutaOutras = listaCompleta.filter(l => l.tipo === 'entrada' && l.categoria !== 'Nota de Serviço' && l.categoria !== 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     
+     const receitaBruta = rBrutaServicos + rBrutaVendas + rBrutaOutras;
+     
+     const custoServicos = listaCompleta.filter(l => l.tipo === 'entrada' && l.custo).reduce((s,l) => s+(parseFloat(l.custo)||0), 0);
+     const custoPecas = listaCompleta.filter(l => l.categoria === 'Compra de Peças').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     
+     const lucroBruto = receitaBruta - custoServicos - custoPecas;
+     
+     // Despesas Operacionais (ignora Sangria)
+     const despesasFixas = listaCompleta.filter(l => l.tipo === 'saida' && ['Aluguel', 'Energia / Água', 'Salário'].includes(l.categoria)).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     const despesasOutras = listaCompleta.filter(l => l.tipo === 'saida' && !['Compra de Peças', 'Sangria de Caixa', 'Aluguel', 'Energia / Água', 'Salário'].includes(l.categoria) && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     
+     const totalDespesas = despesasFixas + despesasOutras;
+     const lucroLiquido = lucroBruto - totalDespesas;
+     
+     const percentLucro = receitaBruta > 0 ? ((lucroLiquido / receitaBruta) * 100).toFixed(1) + '%' : '0%';
+     
+     const corLucro = lucroLiquido >= 0 ? 'var(--success)' : 'var(--danger)';
+     
+     const b = document.getElementById('dreBody');
+     if(!b) return;
+     
+     b.innerHTML = `
+     <div style="text-align:center;margin-bottom:16px;font-weight:bold;font-size:16px">DRE (DEMONSTRATIVO DE RESULTADO) - ${mesRef}</div>
+     
+     <div style="display:flex;justify-content:space-between;color:var(--text)"><span>1. RECEITA BRUTA</span> <strong class="green">${formatMoney(receitaBruta)}</strong></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Serviços (OS)</span> <span>${formatMoney(rBrutaServicos)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Vendas (Produtos)</span> <span>${formatMoney(rBrutaVendas)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Outras Receitas</span> <span>${formatMoney(rBrutaOutras)}</span></div>
+     
+     <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
+     
+     <div style="display:flex;justify-content:space-between;color:var(--text)"><span>2. CUSTOS DIRETOS (CMV/CSV)</span> <strong class="red">− ${formatMoney(custoServicos + custoPecas)}</strong></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Custo de Peças Aplicadas (OS)</span> <span>${formatMoney(custoServicos)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Compra de Estoque/Peças</span> <span>${formatMoney(custoPecas)}</span></div>
+     
+     <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
+     
+     <div style="display:flex;justify-content:space-between;color:var(--text);font-size:15px;background:var(--bg);padding:4px"><span>= LUCRO BRUTO (1 - 2)</span> <strong style="color:var(--accent)">${formatMoney(lucroBruto)}</strong></div>
+     
+     <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
+     
+     <div style="display:flex;justify-content:space-between;color:var(--text)"><span>3. DESPESAS OPERACIONAIS</span> <strong class="red">− ${formatMoney(totalDespesas)}</strong></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Despesas Fixas (Aluguel, Luz, etc)</span> <span>${formatMoney(despesasFixas)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Outras Despesas</span> <span>${formatMoney(despesasOutras)}</span></div>
+     
+     <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
+     
+     <div style="display:flex;justify-content:space-between;color:var(--text);font-size:16px;font-weight:bold;background:rgba(255,255,255,0.05);padding:8px;border-radius:4px">
+        <span>= LUCRO LÍQUIDO</span> 
+        <div style="text-align:right">
+           <strong style="color:${corLucro}">${formatMoney(lucroLiquido)}</strong><br>
+           <span style="font-size:12px;font-weight:normal;color:var(--text-muted)">Margem: ${percentLucro}</span>
+        </div>
+     </div>
+     `;
   }
 
   // ── showPage — atualizar para incluir novas páginas ──
@@ -5087,7 +5336,20 @@
       }
     }
 
-    function init() {
+    function toggleFinVencimento() {
+    const st = document.getElementById('finStatus').value;
+    const v = document.getElementById('finVencimento');
+    if (st === 'pendente') { v.disabled = false; if (!v.value) v.value = document.getElementById('finData').value; }
+    else { v.disabled = true; v.value = ''; }
+  }
+  function toggleFinParcelas() {
+    const p = parseInt(document.getElementById('finParcelas').value) || 1;
+    const i = document.getElementById('finIntervalo');
+    if (p > 1) i.disabled = false;
+    else i.disabled = true;
+  }
+
+  function init() {
       try {
         const f = getFin();
         const oldLen = f.lancamentos.length;
