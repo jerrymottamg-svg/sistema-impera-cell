@@ -1401,6 +1401,10 @@
         <label>Data da Venda *</label>
         <input type="date" id="vendaData" />
       </div>
+      <div class="form-group">
+        <label>Vendedor</label>
+        <select id="vendaVendedor"></select>
+      </div>
     </div>
     <div style="font-size:14px;color:var(--text-muted);margin-bottom:10px">
       Total da venda: <strong id="vendaTotalPreview" style="color:var(--gold);font-size:18px">R$ 0,00</strong>
@@ -3936,6 +3940,13 @@
     document.getElementById('vendaFormaPagamento').value = 'Dinheiro';
     prefillVendasData();
     document.getElementById('vendaData').value = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
+    
+    const selVend = document.getElementById('vendaVendedor');
+    if (selVend) {
+      selVend.innerHTML = appUsers.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+      selVend.value = currentUser ? currentUser.name : (appUsers.length ? appUsers[0].name : '');
+    }
+    
     atualizarTotalVenda();
     document.getElementById('modalVenda').classList.add('open');
     setTimeout(() => document.getElementById('vendaBarcode').focus(), 50);
@@ -3969,6 +3980,13 @@
     document.getElementById('vendaQuantidade').value = v.quantidade;
     document.getElementById('vendaFormaPagamento').value = v.formaPagamento;
     document.getElementById('vendaData').value = v.data;
+    
+    const selVend = document.getElementById('vendaVendedor');
+    if (selVend) {
+      selVend.innerHTML = appUsers.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+      selVend.value = v.vendedor || (currentUser ? currentUser.name : '');
+    }
+    
     atualizarTotalVenda();
     document.getElementById('modalVenda').classList.add('open');
   }
@@ -3998,17 +4016,18 @@
 
     const total = preco * quantidade;
     const d = getVendas();
+    const vendedorEscolhido = document.getElementById('vendaVendedor') ? document.getElementById('vendaVendedor').value : (currentUser ? currentUser.name : '');
 
     if (editId) {
       const v = d.vendas.find(x => x.id === Number(editId));
-      if (v) Object.assign(v, { descricao, preco, quantidade, formaPagamento, data, total });
+      if (v) Object.assign(v, { descricao, preco, quantidade, formaPagamento, data, total, vendedor: vendedorEscolhido });
     } else {
       d.vendas.push({
         id: d.nextId++,
         data,
         hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         descricao, preco, quantidade, total, formaPagamento,
-        vendedor: currentUser ? currentUser.name : ''
+        vendedor: vendedorEscolhido
       });
     }
     saveVendas(d);
