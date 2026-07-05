@@ -1622,6 +1622,9 @@
 <div class="print-os" id="printArea"></div>
 
 <script>
+  function getLocalISO(d = new Date()) {
+    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  }
 
   // ══════════════════════════════════════════════════════════
   // ── SUPABASE — Camada de Persistência na Nuvem ──
@@ -2623,7 +2626,7 @@
   }
 
   function isoToday() {
-    return new Date().toISOString().split('T')[0];
+    return getLocalISO();
   }
 
   function formatMoney(v) {
@@ -2662,7 +2665,7 @@
     if (!el.value) {
       const d = new Date();
       d.setDate(d.getDate() + 3);
-      el.value = d.toISOString().split('T')[0];
+      el.value = getLocalISO(d);
     }
     // Inicializar/reinicializar canvas de padrão de senha
     setTimeout(() => { window._senhaPatternInit && window._senhaPatternInit(); }, 50);
@@ -3152,7 +3155,7 @@
       // Fallback: criar lançamento se não existir (não deveria acontecer)
       fin.lancamentos.push({
         id: fin.nextId++,
-        data: os.dataISOEntrada || new Date().toISOString().slice(0,10),
+        data: os.dataISOEntrada || getLocalISO(),
         desc: `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`,
         categoria: 'Nota de Serviço',
         tipo: 'entrada',
@@ -3197,7 +3200,7 @@
     document.getElementById('pagOSLabel').textContent = `#${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`;
     document.getElementById('pagOSValor').value = parseFloat(os.valorServico) || '';
     document.getElementById('pagOSForma').value = 'Dinheiro';
-    document.getElementById('pagOSData').value = new Date().toISOString().slice(0,10);
+    document.getElementById('pagOSData').value = getLocalISO();
 
     // Mostrar custo se existir
     const custo = parseFloat(os.custoServico) || 0;
@@ -3930,7 +3933,7 @@
 
   function prefillVendasData() {
     const inp = document.getElementById('vendasData');
-    if (inp && !inp.value) inp.value = new Date().toISOString().slice(0,10);
+    if (inp && !inp.value) inp.value = getLocalISO();
   }
 
   function toggleDividirPagamento() {
@@ -3963,7 +3966,7 @@
     document.getElementById('vendaValorPag2').value = '';
     toggleDividirPagamento();
     prefillVendasData();
-    document.getElementById('vendaData').value = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
+    document.getElementById('vendaData').value = document.getElementById('vendasData').value || getLocalISO();
     
     const selVend = document.getElementById('vendaVendedor');
     if (selVend) {
@@ -4108,7 +4111,7 @@
 
   function definirCaixaInicial() {
     prefillVendasData();
-    const data = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
+    const data = document.getElementById('vendasData').value || getLocalISO();
     const d = getVendas();
     document.getElementById('caixaInicialData').value = data;
     document.getElementById('caixaInicialValor').value = d.caixas[data] != null ? d.caixas[data] : '';
@@ -4131,8 +4134,8 @@
   function renderVendas() {
     // Preenche data padrão (hoje) apenas se ainda não tiver valor
     const inputData = document.getElementById('vendasData');
-    if (inputData && !inputData.value) inputData.value = new Date().toISOString().slice(0,10);
-    const data = inputData ? inputData.value : new Date().toISOString().slice(0,10);
+    if (inputData && !inputData.value) inputData.value = getLocalISO();
+    const data = inputData ? inputData.value : getLocalISO();
 
     const d = getVendas();
     const vendasDia = d.vendas.filter(v => v.data === data).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
@@ -4252,7 +4255,7 @@
   }
 
   function abrirModalLancamento(tipo) {
-    document.getElementById('finData').value = new Date().toISOString().slice(0,10);
+    document.getElementById('finData').value = getLocalISO();
     document.getElementById('finTipo').value = tipo || 'entrada';
     document.getElementById('finDesc').value = '';
     document.getElementById('finValor').value = '';
@@ -4401,26 +4404,26 @@
 
     if (_periodoAtivo === 'hoje') {
       return {
-        de: new Date(ano, mes, dia).toISOString().slice(0,10),
-        ate: new Date(ano, mes, dia).toISOString().slice(0,10)
+        de: getLocalISO(new Date(ano, mes, dia)),
+        ate: getLocalISO(new Date(ano, mes, dia))
       };
     }
 
     if (_periodoAtivo === 'mes-atual') {
       return {
-        de: new Date(ano, mes, 1).toISOString().slice(0,10),
-        ate: new Date(ano, mes+1, 0).toISOString().slice(0,10)
+        de: getLocalISO(new Date(ano, mes, 1)),
+        ate: getLocalISO(new Date(ano, mes+1, 0))
       };
     }
     if (_periodoAtivo === 'mes-anterior') {
       return {
-        de: new Date(ano, mes-1, 1).toISOString().slice(0,10),
-        ate: new Date(ano, mes, 0).toISOString().slice(0,10)
+        de: getLocalISO(new Date(ano, mes-1, 1)),
+        ate: getLocalISO(new Date(ano, mes, 0))
       };
     }
     if (_periodoAtivo === 'trimestre') {
       const d = new Date(hoje); d.setMonth(d.getMonth() - 2); d.setDate(1);
-      return { de: d.toISOString().slice(0,10), ate: hoje.toISOString().slice(0,10) };
+      return { de: getLocalISO(d), ate: getLocalISO(hoje) };
     }
     if (_periodoAtivo === 'ano') {
       return { de: `${ano}-01-01`, ate: `${ano}-12-31` };
@@ -4431,7 +4434,7 @@
       const [a, m] = v.split('-');
       return {
         de: `${a}-${m}-01`,
-        ate: new Date(+a, +m, 0).toISOString().slice(0,10)
+        ate: getLocalISO(new Date(+a, +m, 0))
       };
     }
     if (_periodoAtivo === 'custom') {
