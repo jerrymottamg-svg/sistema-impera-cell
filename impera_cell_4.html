@@ -4716,7 +4716,7 @@
     
     // As "Sangrias de Caixa" não são despesas (são transferências de valores), 
     // logo não devem abater do faturamento líquido.
-    const saidas = listaCompleta.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa').reduce((s,l) => s+(parseFloat(l.valor)||0), 0) + custoEmbutido;
+    const saidas = listaCompleta.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0) + custoEmbutido;
     
     const totalOS     = listaCompleta.filter(l => l.categoria === 'Nota de Serviço').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
     const totalVendas = listaCompleta.filter(l => l.categoria === 'Venda de Produto').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
