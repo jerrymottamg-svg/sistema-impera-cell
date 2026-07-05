@@ -4042,20 +4042,6 @@
     });
     saveVendas(d);
     
-    // Integração automática com o Financeiro
-    const f = getFin();
-    f.lancamentos.push({
-      id: f.nextId++,
-      automatico: true,
-      tipo: 'saida',
-      data: data,
-      desc: 'Sangria do Caixa: ' + desc,
-      categoria: 'Despesas Diversas',
-      formaPagamento: 'Dinheiro',
-      valor: val
-    });
-    saveFin(f);
-
     closeModal('modalRetirada');
     toast('💸 Retirada lançada com sucesso!');
     renderVendas();
@@ -4689,16 +4675,30 @@
 
     // ── Lançamentos automáticos: apenas Vendas (OS entram via confirmação de pagamento) ──
     const dv = getVendas();
-    const lancamentosVendas = dv.vendas.map(v => ({
-      id: 'venda-' + v.id,
-      data: v.data,
-      desc: `Venda — ${v.descricao}`,
-      categoria: 'Venda de Produto',
-      tipo: 'entrada',
-      valor: parseFloat(v.total)||0,
-      formaPagamento: v.formaPagamento,
-      automatico: true,
-    }));
+    const lancamentosVendas = dv.vendas.map(v => {
+      if (v.isRetirada) {
+        return {
+          id: 'venda-' + v.id,
+          data: v.data,
+          desc: `Sangria — ${v.descricao}`,
+          categoria: 'Sangria de Caixa',
+          tipo: 'saida',
+          valor: parseFloat(v.total)||0,
+          formaPagamento: v.formaPagamento,
+          automatico: true,
+        };
+      }
+      return {
+        id: 'venda-' + v.id,
+        data: v.data,
+        desc: `Venda — ${v.descricao}`,
+        categoria: 'Venda de Produto',
+        tipo: 'entrada',
+        valor: parseFloat(v.total)||0,
+        formaPagamento: v.formaPagamento,
+        automatico: true,
+      };
+    });
 
     // ── Juntar tudo ──
     let listaCompleta = [...d.lancamentos, ...lancamentosVendas]
