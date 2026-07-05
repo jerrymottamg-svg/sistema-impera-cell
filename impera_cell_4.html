@@ -1080,9 +1080,7 @@
         <button class="tab" onclick="showFinTab('dre')">DRE Mensal</button>
       </div>
 
-      <!-- Extrato e Futuro Containers -->
-      <div id="fin-tab-extrato" class="fin-subpage active" style="display:block">
-      <!-- Filtros Extrato -->
+      <!-- Filtros Globais do Financeiro -->
       <div style="padding:0 0 16px;display:flex;flex-direction:column;gap:10px">
 
         <!-- Linha 1: busca + tipo -->
@@ -1133,6 +1131,8 @@
 
       </div>
 
+      <!-- Extrato Container -->
+      <div id="fin-tab-extrato" class="fin-subpage active" style="display:block">
       <div class="table-wrap">
         <table>
           <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Saída/Custo</th><th>Entrada/Valor</th><th>Ações</th></tr></thead>
@@ -4891,8 +4891,10 @@
     // Lista da tabela respeita também tipo e categoria
     let lista = extratoLista.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
     
-    // Lista A Pagar/Receber (Mostra TODOS os pendentes independente do mês)
+    // Lista A Pagar/Receber
     let futuroLista = listaCompleta.filter(l => (l.status || 'pago') === 'pendente').sort((a,b) => (a.dataVencimento||a.data).localeCompare(b.dataVencimento||b.data));
+    if (periodo) futuroLista = futuroLista.filter(l => (l.dataVencimento || l.data) >= periodo.de && (l.dataVencimento || l.data) <= periodo.ate);
+    futuroLista = futuroLista.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
 
     const entradas    = extratoLista.filter(l => l.tipo === 'entrada').reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
     const custoEmbutido = extratoLista.filter(l => l.tipo === 'entrada' && l.custo).reduce((s,l) => s+(parseFloat(l.custo)||0), 0);
