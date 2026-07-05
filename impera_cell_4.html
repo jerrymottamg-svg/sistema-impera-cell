@@ -1142,6 +1142,20 @@
       
       <!-- Inicio Futuro -->
       <div id="fin-tab-futuro" class="fin-subpage" style="display:none">
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+           <div class="card" style="flex:1;background:var(--surface);border:1px solid var(--border);padding:16px">
+              <div style="color:var(--text-muted);font-size:12px;text-transform:uppercase">Total A Pagar</div>
+              <div id="totalAPagar" style="font-size:24px;font-weight:bold;color:var(--danger)">R$ 0,00</div>
+           </div>
+           <div class="card" style="flex:1;background:var(--surface);border:1px solid var(--border);padding:16px">
+              <div style="color:var(--text-muted);font-size:12px;text-transform:uppercase">Total A Receber</div>
+              <div id="totalAReceber" style="font-size:24px;font-weight:bold;color:var(--success)">R$ 0,00</div>
+           </div>
+           <div class="card" style="flex:1;background:var(--surface);border:1px solid var(--border);padding:16px">
+              <div style="color:var(--text-muted);font-size:12px;text-transform:uppercase">Saldo Futuro Projetado</div>
+              <div id="saldoProjetado" style="font-size:24px;font-weight:bold;color:var(--accent)">R$ 0,00</div>
+           </div>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead>
@@ -4957,6 +4971,19 @@
       </tr>`;
     }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
     
+    let valAPagar = 0;
+    let valAReceber = 0;
+    futuroLista.forEach(l => {
+       if (l.tipo === 'saida') valAPagar += parseFloat(l.valor) || 0;
+       if (l.tipo === 'entrada') valAReceber += parseFloat(l.valor) || 0;
+    });
+    const elPagar = document.getElementById('totalAPagar');
+    const elReceber = document.getElementById('totalAReceber');
+    const elSaldo = document.getElementById('saldoProjetado');
+    if (elPagar) elPagar.textContent = formatMoney(valAPagar);
+    if (elReceber) elReceber.textContent = formatMoney(valAReceber);
+    if (elSaldo) elSaldo.textContent = formatMoney(valAReceber - valAPagar);
+
     const tbodyFuturo = document.getElementById('finFuturoBody');
     if (tbodyFuturo) tbodyFuturo.innerHTML = futuroLista.map(l => {
       const dt = new Date((l.dataVencimento||l.data)+'T12:00').toLocaleDateString('pt-BR');
