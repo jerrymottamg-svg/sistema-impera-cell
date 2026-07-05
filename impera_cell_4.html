@@ -4018,8 +4018,9 @@
     
     const selVend = document.getElementById('vendaVendedor');
     if (selVend) {
-      selVend.innerHTML = appUsers.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
-      selVend.value = currentUser ? currentUser.name : (appUsers.length ? appUsers[0].name : '');
+      selVend.innerHTML = appVendedores.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+      const defaultVend = appVendedores.find(v => currentUser && v.name === currentUser.name);
+      selVend.value = defaultVend ? defaultVend.name : (appVendedores.length ? appVendedores[0].name : '');
     }
     
     atualizarTotalVenda();
@@ -4058,8 +4059,8 @@
     
     const selVend = document.getElementById('vendaVendedor');
     if (selVend) {
-      selVend.innerHTML = appUsers.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
-      selVend.value = v.vendedor || (currentUser ? currentUser.name : '');
+      selVend.innerHTML = appVendedores.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+      selVend.value = v.vendedor || '';
     }
     
     atualizarTotalVenda();
