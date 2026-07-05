@@ -1273,6 +1273,7 @@
       <button class="modal-close" onclick="closeModal('modalProduto')">✕</button>
     </div>
     <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group full"><label>Código de Barras (opcional)</label><input type="text" id="prodBarcode" placeholder="Bipar ou digitar código..." /></div>
       <div class="form-group full"><label>Nome do Produto *</label><input type="text" id="prodNome" placeholder="Ex: Tela Samsung A54" /></div>
       <div class="form-group"><label>Categoria</label>
         <select id="prodCategoria"><option>Telas</option><option>Baterias</option><option>Conectores</option><option>Películas</option><option>Acessórios</option><option>Ferramentas</option><option>Outros</option></select>
@@ -1332,6 +1333,10 @@
       <button class="modal-close" onclick="closeModal('modalVenda')">✕</button>
     </div>
     <div class="form-grid" style="margin-bottom:10px">
+      <div class="form-group full">
+        <label>Bipar Código de Barras (Estoque)</label>
+        <input type="text" id="vendaBarcode" placeholder="Posicione aqui e bipe o produto..." onkeydown="handleVendaBarcode(event)" style="border-color:var(--accent)" />
+      </div>
       <div class="form-group full">
         <label>Descrição do Produto *</label>
         <input type="text" id="vendaDescricao" placeholder="Ex: Capinha iPhone 13, Película 3D, Carregador..." />
@@ -3761,9 +3766,10 @@
       document.getElementById('prodMin').value = p.min;
       document.getElementById('prodCusto').value = p.custo;
       document.getElementById('prodObs').value = p.obs || '';
+      document.getElementById('prodBarcode').value = p.barcode || '';
     } else {
       titulo.textContent = 'Novo Produto';
-      ['prodNome','prodObs'].forEach(id => document.getElementById(id).value = '');
+      ['prodNome','prodObs','prodBarcode'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('prodQtd').value = 0;
       document.getElementById('prodMin').value = 3;
       document.getElementById('prodCusto').value = 0;
@@ -3786,6 +3792,7 @@
       min: parseFloat(document.getElementById('prodMin').value) || 0,
       custo: parseFloat(document.getElementById('prodCusto').value) || 0,
       obs: document.getElementById('prodObs').value.trim(),
+      barcode: document.getElementById('prodBarcode').value.trim(),
     };
     if (prodEditId) {
       const idx = d.produtos.findIndex(x => x.id === prodEditId);
@@ -3824,7 +3831,7 @@
     const search = (document.getElementById('searchEstoque')?.value || '').toLowerCase();
     const cat = document.getElementById('filterCategoria')?.value || '';
     let lista = d.produtos;
-    if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search));
+    if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search) || (p.barcode && p.barcode.includes(search)));
     if (cat) lista = lista.filter(p => p.categoria === cat);
 
     const tbody = document.getElementById('estoqueBody');
@@ -3886,6 +3893,7 @@
 
   function abrirModalVenda() {
     document.getElementById('vendaEditId').value = '';
+    document.getElementById('vendaBarcode').value = '';
     document.getElementById('vendaDescricao').value = '';
     document.getElementById('vendaPreco').value = '';
     document.getElementById('vendaQuantidade').value = 1;
@@ -3894,7 +3902,25 @@
     document.getElementById('vendaData').value = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
     atualizarTotalVenda();
     document.getElementById('modalVenda').classList.add('open');
-    setTimeout(() => document.getElementById('vendaDescricao').focus(), 50);
+    setTimeout(() => document.getElementById('vendaBarcode').focus(), 50);
+  }
+
+  function handleVendaBarcode(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = e.target.value.trim();
+      if (!code) return;
+      const d = getEstoque();
+      const p = d.produtos.find(x => x.barcode === code);
+      if (p) {
+        document.getElementById('vendaDescricao').value = p.nome;
+        toast('✅ Produto localizado: ' + p.nome);
+        setTimeout(() => document.getElementById('vendaPreco').focus(), 50);
+      } else {
+        toast('❌ Produto não encontrado no estoque!', true);
+      }
+      e.target.value = '';
+    }
   }
 
   function editarVenda(id) {
