@@ -2103,6 +2103,10 @@
       if (appUsersConf && Array.isArray(appUsersConf)) {
         appUsers = appUsersConf;
       }
+      const appVendConf = await _sbGetConfig('appVendedores');
+      if (appVendConf && Array.isArray(appVendConf)) {
+        appVendedores = appVendConf;
+      }
       console.log('🔍 [_initSupabase] Configuracoes carregadas');
 
       const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
