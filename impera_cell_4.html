@@ -4974,13 +4974,18 @@
         stats.innerHTML = `
           <div class="stat-card" style="border-color:var(--danger)">
             <span class="stat-label">🔴 Total Pendente (A Pagar)${periodoLabel}</span>
-            <span class="stat-value red">R$ ${formatMoney(valAPagar)}</span>
+            <span class="stat-value red">${formatMoney(valAPagar)}</span>
             <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Despesas pendentes filtradas</span>
           </div>
           <div class="stat-card" style="border-color:var(--text-muted)">
             <span class="stat-label">✔️ Total Já Pago${periodoLabel}</span>
-            <span class="stat-value" style="color:var(--text-muted)">R$ ${formatMoney(valPago)}</span>
+            <span class="stat-value" style="color:var(--text-muted)">${formatMoney(valPago)}</span>
             <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Despesas já quitadas filtradas</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--danger); border-width:2px; background:rgba(255,0,0,0.05)">
+            <span class="stat-label">📉 Total de Despesas (Geral)${periodoLabel}</span>
+            <span class="stat-value red">${formatMoney(valAPagar + valPago)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Pendente + Pago</span>
           </div>
         `;
       } else if (_activeFinTab === 'areceber') {
@@ -4995,13 +5000,18 @@
         stats.innerHTML = `
           <div class="stat-card" style="border-color:var(--success)">
             <span class="stat-label">🟢 Total Pendente (A Receber)${periodoLabel}</span>
-            <span class="stat-value green">R$ ${formatMoney(valAReceber)}</span>
+            <span class="stat-value green">${formatMoney(valAReceber)}</span>
             <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Receitas pendentes filtradas</span>
           </div>
           <div class="stat-card" style="border-color:var(--text-muted)">
             <span class="stat-label">✔️ Total Já Recebido${periodoLabel}</span>
-            <span class="stat-value" style="color:var(--text-muted)">R$ ${formatMoney(valRecebido)}</span>
+            <span class="stat-value" style="color:var(--text-muted)">${formatMoney(valRecebido)}</span>
             <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Receitas já quitadas filtradas</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--success); border-width:2px; background:rgba(0,255,0,0.05)">
+            <span class="stat-label">📈 Total de Receitas (Geral)${periodoLabel}</span>
+            <span class="stat-value green">${formatMoney(valAReceber + valRecebido)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Pendente + Recebido</span>
           </div>
         `;
       }
