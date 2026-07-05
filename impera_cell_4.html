@@ -4655,11 +4655,18 @@
       const fotoBtn = l.fotoRecibo ? `<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 6px" onclick="abrirFotoRecibo('${l.fotoRecibo}')" title="Ver Recibo/Comprovante">📸</button>` : '';
       
       // Coluna Saída/Custo
-      const colSaidaCusto = l.tipo === 'entrada'
-        ? (l.custo && l.custo > 0
-            ? `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.custo)}</span>`
-            : '<span style="color:var(--text-muted)">—</span>')
-        : `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.valor)}</span>`;
+      let colSaidaCusto = '<span style="color:var(--text-muted)">—</span>';
+      if (currentUser?.role === 'admin') {
+        colSaidaCusto = l.tipo === 'entrada'
+          ? (l.custo && l.custo > 0
+              ? `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.custo)}</span>`
+              : '<span style="color:var(--text-muted)">—</span>')
+          : `<span style="color:var(--danger);font-weight:600">- ${formatMoney(l.valor)}</span>`;
+      } else {
+        colSaidaCusto = l.tipo === 'entrada' 
+          ? (l.custo && l.custo > 0 ? '<span style="color:var(--text-muted)">***</span>' : '<span style="color:var(--text-muted)">—</span>')
+          : '<span style="color:var(--text-muted)">***</span>';
+      }
       // Coluna Entrada/Valor
       const colEntradaValor = l.tipo === 'entrada'
         ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>`
