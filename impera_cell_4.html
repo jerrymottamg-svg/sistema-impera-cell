@@ -4054,8 +4054,20 @@
     document.getElementById('vendaDescricao').value = v.descricao;
     document.getElementById('vendaPreco').value = v.preco;
     document.getElementById('vendaQuantidade').value = v.quantidade;
-    document.getElementById('vendaFormaPagamento').value = v.formaPagamento;
     document.getElementById('vendaData').value = v.data;
+
+    if (v.pagamentos && v.pagamentos.length > 1) {
+      document.getElementById('vendaPagamentoDividido').checked = true;
+      document.getElementById('vendaFormaPagamento').value = v.pagamentos[0].forma;
+      document.getElementById('vendaFormaPagamento1').value = v.pagamentos[0].forma;
+      document.getElementById('vendaValorPag1').value = v.pagamentos[0].valor;
+      document.getElementById('vendaFormaPagamento2').value = v.pagamentos[1].forma;
+      document.getElementById('vendaValorPag2').value = v.pagamentos[1].valor;
+    } else {
+      document.getElementById('vendaPagamentoDividido').checked = false;
+      document.getElementById('vendaFormaPagamento').value = v.formaPagamento || 'Dinheiro';
+    }
+    toggleDividirPagamento();
     
     const selVend = document.getElementById('vendaVendedor');
     if (selVend) {
@@ -4109,37 +4121,29 @@
     const d = getVendas();
     const vendedorEscolhido = document.getElementById('vendaVendedor') ? document.getElementById('vendaVendedor').value : (currentUser ? currentUser.name : '');
 
-    if (editId) {
-      if (isDiv) {
-        toast('❌ Vendas divididas não podem ser editadas diretamente (apague e refaça).', true);
-        return;
-      }
-      const v = d.vendas.find(x => x.id === Number(editId));
-      if (v) Object.assign(v, { descricao, preco, quantidade, formaPagamento, data, total, vendedor: vendedorEscolhido });
+    let vData = { 
+      descricao, preco, quantidade, total, formaPagamento, data, vendedor: vendedorEscolhido 
+    };
+    if (isDiv) {
+      const f1 = document.getElementById('vendaFormaPagamento1').value;
+      const v1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
+      const f2 = document.getElementById('vendaFormaPagamento2').value;
+      const v2 = parseFloat(document.getElementById('vendaValorPag2').value) || 0;
+      vData.pagamentos = [{forma: f1, valor: v1}, {forma: f2, valor: v2}];
+      vData.formaPagamento = f1; // fallback
     } else {
-      if (isDiv) {
-        const f1 = document.getElementById('vendaFormaPagamento1').value;
-        const v1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
-        const f2 = document.getElementById('vendaFormaPagamento2').value;
-        const v2 = parseFloat(document.getElementById('vendaValorPag2').value) || 0;
-        
-        d.vendas.push({
-          id: d.nextId++, data, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          descricao: descricao + ` (${f1})`, preco: v1, quantidade: quantidade, total: v1, formaPagamento: f1, vendedor: vendedorEscolhido
-        });
-        d.vendas.push({
-          id: d.nextId++, data, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          descricao: descricao + ` (${f2})`, preco: v2, quantidade: 0, total: v2, formaPagamento: f2, vendedor: vendedorEscolhido
-        });
-      } else {
-        d.vendas.push({
-          id: d.nextId++,
-          data,
-          hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          descricao, preco, quantidade, total, formaPagamento,
-          vendedor: vendedorEscolhido
-        });
-      }
+      vData.pagamentos = null;
+    }
+
+    if (editId) {
+      const v = d.vendas.find(x => x.id === Number(editId));
+      if (v) Object.assign(v, vData);
+    } else {
+      d.vendas.push({
+        id: d.nextId++,
+        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        ...vData
+      });
     }
     saveVendas(d);
     closeModal('modalVenda');
@@ -4224,13 +4228,16 @@
     `;
 
     const tbody = document.getElementById('vendasBody');
-    if (tbody) tbody.innerHTML = vendasDia.map(v => `
+    if (tbody) tbody.innerHTML = vendasDia.map(v => {
+      const isDiv = v.pagamentos && v.pagamentos.length > 1;
+      const formaStr = isDiv ? v.pagamentos.map(p => p.forma).join(' + ') : (v.formaPagamento || 'Dinheiro');
+      return `
       <tr>
         <td>${v.hora || '—'}</td>
         <td>${v.descricao}</td>
         <td>${v.quantidade}</td>
         <td>${formatMoney(v.preco)}</td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${v.formaPagamento}</span></td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${formaStr}</span></td>
         <td><span style="font-size:12px;color:var(--text-muted)">${v.vendedor || '—'}</span></td>
         <td><strong style="color:var(--gold)">${formatMoney(v.total)}</strong></td>
         <td>
@@ -4238,7 +4245,7 @@
           <button class="btn btn-sm btn-danger" onclick="excluirVenda(${v.id})">🗑</button>
         </td>
       </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhuma venda registrada neste dia.</td></tr>';
+    `}).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhuma venda registrada neste dia.</td></tr>';
 
     // Resumo por dia — junta dias com vendas e/ou caixa inicial definido
     const dias = new Set([...d.vendas.map(v => v.data), ...Object.keys(d.caixas)]);
@@ -4261,7 +4268,13 @@
       const vd = d.vendas.filter(v => v.data === dia);
       const tot = vd.reduce((s,v) => s + v.total, 0);
       const pf = { 'Dinheiro': 0, 'Pix': 0, 'Crédito': 0, 'Débito': 0 };
-      vd.forEach(v => { pf[v.formaPagamento] = (pf[v.formaPagamento] || 0) + v.total; });
+      vd.forEach(v => { 
+        if (v.pagamentos && v.pagamentos.length) {
+          v.pagamentos.forEach(p => { pf[p.forma] = (pf[p.forma] || 0) + (parseFloat(p.valor)||0); });
+        } else {
+          pf[v.formaPagamento] = (pf[v.formaPagamento] || 0) + v.total; 
+        }
+      });
       const ci = d.caixas[dia] != null ? d.caixas[dia] : 0;
       const ce = ci + pf['Dinheiro'];
       const ativo = dia === data;
