@@ -5092,14 +5092,22 @@
       const dt    = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
       const pgto  = l.formaPagamento ? `<span style="font-size:11px;color:var(--text-muted)"> · ${l.formaPagamento}</span>` : '';
       // Botões de Ação
-      const excluirBtn = (l.automatico && !l.desc.includes('Sangria do Caixa')) ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento('${l.id}')">🗑️</button>`;
+      let excluirBtn = '';
+      if (!l.automatico || l.desc.includes('Sangria do Caixa')) {
+        excluirBtn = `<button class="btn btn-sm btn-danger" onclick="excluirLancamento('${l.id}')">🗑️</button>`;
+      }
+      
       const fotoBtn = l.fotoRecibo ? `<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 6px" onclick="abrirFotoRecibo('${l.fotoRecibo}')" title="Ver Recibo/Comprovante">📸</button>` : '';
       
       let baixarBtn = '';
       if ((l.status || 'pago') === 'pendente') {
           baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
       }
-      const editarBtn = l.automatico ? '' : `<button class="btn btn-sm btn-secondary" onclick="editarLancamentoCompleto('${l.id}')">✏️</button>`;
+      
+      let editarBtn = '';
+      if (!l.automatico) {
+          editarBtn = `<button class="btn btn-sm btn-secondary" onclick="editarLancamentoCompleto('${l.id}')">✏️</button>`;
+      }
       
       // Coluna Saída/Custo
       let colSaidaCusto = '<span style="color:var(--text-muted)">—</span>';
@@ -5133,7 +5141,7 @@
         <td>${statusBadge}</td>
         <td>${colSaidaCusto}</td>
         <td>${colEntradaValor}</td>
-        <td><div style="display:flex;gap:4px;justify-content:flex-end">${fotoBtn}${baixarBtn}${editarBtn}${excluirBtn === '—' ? '' : excluirBtn}</div></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end">${fotoBtn}${baixarBtn}${editarBtn}${excluirBtn}</div></td>
       </tr>`;
     }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
     
