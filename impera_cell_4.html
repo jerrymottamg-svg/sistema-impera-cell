@@ -5247,7 +5247,6 @@
      const d = getFin();
      const dv = getVendas();
      
-     // Construir array com tudo do mês e pago
      let listaCompleta = [...d.lancamentos, ...dv.vendas.map(v => ({
       data: v.data,
       desc: v.descricao,
@@ -5256,13 +5255,23 @@
       valor: parseFloat(v.total)||0,
       custo: parseFloat(v.custo)||0, // vendas nao tem custo nativo na forma antiga, entao 0
       status: v.status || 'pago'
-     }))];
+     }))].map(l => {
+         let iso = l.data || '';
+         if (iso.includes('/')) {
+             let p = iso.split(',')[0].split(' ')[0].split('/');
+             if (p.length === 3) iso = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+         } else {
+             iso = iso.substring(0, 10);
+         }
+         return { ...l, isoData: iso };
+     });
      
      if (pd) {
+         const pdDe = pd.de.substring(0, 10);
+         const pdAte = pd.ate.substring(0, 10);
          listaCompleta = listaCompleta.filter(l => {
              if ((l.status || 'pago') !== 'pago') return false;
-             // se for um lancamento com vencimento, usamos ele? Nao, DRE eh regime de caixa na maioria dos casos aqui, ou usamos data do pgto (que guardamos na data).
-             return l.data >= pd.de && l.data <= pd.ate;
+             return l.isoData >= pdDe && l.isoData <= pdAte;
          });
      } else {
          listaCompleta = listaCompleta.filter(l => (l.status || 'pago') === 'pago');
