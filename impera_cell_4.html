@@ -4777,7 +4777,8 @@
     tbody.innerHTML = listaFiltrada.map(l => {
       const dt    = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
       const pgto  = l.formaPagamento ? `<span style="font-size:11px;color:var(--text-muted)"> · ${l.formaPagamento}</span>` : '';
-      const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
+      // Permite exclusão de fantasmas antigos de Sangria mesmo que estejam marcados como automático no banco
+      const excluirBtn = (l.automatico && !l.desc.includes('Sangria do Caixa')) ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
       const fotoBtn = l.fotoRecibo ? `<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 6px" onclick="abrirFotoRecibo('${l.fotoRecibo}')" title="Ver Recibo/Comprovante">📸</button>` : '';
       
       // Coluna Saída/Custo
