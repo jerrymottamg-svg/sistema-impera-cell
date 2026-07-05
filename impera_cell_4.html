@@ -660,6 +660,7 @@
           <input type="date" id="vendasData" onchange="setTimeout(renderVendas,0)" />
         </div>
         <button class="btn btn-secondary" onclick="definirCaixaInicial()">💰 Definir Caixa Inicial do Dia</button>
+        <button class="btn btn-danger" onclick="abrirModalRetirada()">💸 Lançar Retirada</button>
         <button class="btn btn-primary" style="margin-left:auto" onclick="abrirModalVenda()">+ Nova Venda</button>
       </div>
     </div>
@@ -3968,6 +3969,56 @@
   // ══════════════ VENDAS ══════════════
   const VENDAS_KEY = 'imperaCellVendas';
 
+  function abrirModalRetirada() {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editVendas)) {
+      return toast('❌ Sem permissão.', true);
+    }
+    document.getElementById('retiradaDescricao').value = '';
+    document.getElementById('retiradaValor').value = '';
+    document.getElementById('modalRetirada').classList.add('open');
+  }
+
+  function salvarRetirada() {
+    const desc = document.getElementById('retiradaDescricao').value.trim();
+    const val = parseFloat(document.getElementById('retiradaValor').value);
+    const data = document.getElementById('vendasData').value || getLocalISO();
+    
+    if (!desc || isNaN(val) || val <= 0) return toast('Preencha os campos corretamente', true);
+    
+    const d = getVendas();
+    d.vendas.push({
+      id: d.nextId++,
+      isRetirada: true,
+      data: data,
+      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      descricao: 'RETIRADA: ' + desc,
+      preco: val,
+      quantidade: 1,
+      total: val,
+      formaPagamento: 'Dinheiro',
+      vendedor: currentUser ? currentUser.name : ''
+    });
+    saveVendas(d);
+    
+    // Integração automática com o Financeiro
+    const f = getFin();
+    f.lancamentos.push({
+      id: f.nextId++,
+      automatico: true,
+      tipo: 'saida',
+      data: data,
+      desc: 'Sangria do Caixa: ' + desc,
+      categoria: 'Despesas Diversas',
+      formaPagamento: 'Dinheiro',
+      valor: val
+    });
+    saveFin(f);
+
+    closeModal('modalRetirada');
+    toast('💸 Retirada lançada com sucesso!');
+    renderVendas();
+  }
+
   function getVendas() {
     if (_useSupabase && _cache._loaded) {
       return JSON.parse(JSON.stringify(_cache.vendas));
@@ -4197,9 +4248,14 @@
     const d = getVendas();
     const vendasDia = d.vendas.filter(v => v.data === data).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
 
-    const totalDia = vendasDia.reduce((s,v) => s + (parseFloat(v.total)||0), 0);
+    const totalDia = vendasDia.reduce((s,v) => !v.isRetirada ? s + (parseFloat(v.total)||0) : s, 0);
     const porForma = { 'Dinheiro': 0, 'Pix': 0, 'Crédito': 0, 'Débito': 0 };
+    let totalRetiradas = 0;
     vendasDia.forEach(v => {
+      if (v.isRetirada) {
+         totalRetiradas += (parseFloat(v.total)||0);
+         return;
+      }
       // Suporte a pagamento dividido
       if (v.pagamentos && v.pagamentos.length) {
         v.pagamentos.forEach(p => { porForma[p.forma] = (porForma[p.forma]||0) + (parseFloat(p.valor)||0); });
@@ -4209,7 +4265,7 @@
       }
     });
     const caixaInicial = d.caixas[data] != null ? d.caixas[data] : 0;
-    const caixaEsperado = caixaInicial + (porForma['Dinheiro']||0);
+    const caixaEsperado = caixaInicial + (porForma['Dinheiro']||0) - totalRetiradas;
 
     const stats = document.getElementById('vendasStats');
     if (stats) stats.innerHTML = `
@@ -4233,6 +4289,21 @@
 
     const tbody = document.getElementById('vendasBody');
     if (tbody) tbody.innerHTML = vendasDia.map(v => {
+      if (v.isRetirada) {
+        return `
+        <tr style="background-color: rgba(255,50,50,0.05);">
+          <td>${v.hora || '—'}</td>
+          <td style="color:var(--danger); font-weight:600;">${v.descricao}</td>
+          <td>${v.quantidade}</td>
+          <td><span style="color:var(--danger)">- ${formatMoney(v.preco)}</span></td>
+          <td><span style="font-size:12px;color:var(--text-muted)">${v.formaPagamento}</span></td>
+          <td><span style="font-size:12px;color:var(--text-muted)">${v.vendedor || '—'}</span></td>
+          <td><strong style="color:var(--danger)">- ${formatMoney(v.total)}</strong></td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="excluirVenda(${v.id})" title="Excluir Retirada">🗑</button>
+          </td>
+        </tr>`;
+      }
       const isDiv = v.pagamentos && v.pagamentos.length > 1;
       const formaStr = isDiv ? v.pagamentos.map(p => p.forma).join(' + ') : (v.formaPagamento || 'Dinheiro');
       return `
@@ -4270,17 +4341,20 @@
     const resumoBody = document.getElementById('vendasResumoBody');
     if (resumoBody) resumoBody.innerHTML = diasOrdenados.map(dia => {
       const vd = d.vendas.filter(v => v.data === dia);
-      const tot = vd.reduce((s,v) => s + v.total, 0);
+      const tot = vd.reduce((s,v) => !v.isRetirada ? s + v.total : s, 0);
       const pf = { 'Dinheiro': 0, 'Pix': 0, 'Crédito': 0, 'Débito': 0 };
+      let rt = 0;
       vd.forEach(v => { 
-        if (v.pagamentos && v.pagamentos.length) {
+        if (v.isRetirada) {
+           rt += v.total;
+        } else if (v.pagamentos && v.pagamentos.length) {
           v.pagamentos.forEach(p => { pf[p.forma] = (pf[p.forma] || 0) + (parseFloat(p.valor)||0); });
         } else {
           pf[v.formaPagamento] = (pf[v.formaPagamento] || 0) + v.total; 
         }
       });
       const ci = d.caixas[dia] != null ? d.caixas[dia] : 0;
-      const ce = ci + pf['Dinheiro'];
+      const ce = ci + pf['Dinheiro'] - rt;
       const ativo = dia === data;
       return `<tr style="cursor:pointer;${ativo ? 'background:var(--surface2)' : ''}" onclick="document.getElementById('vendasData').value='${dia}'; renderVendas();">
         <td>${new Date(dia+'T12:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' })}</td>
