@@ -1136,7 +1136,7 @@
       <div id="fin-tab-extrato" class="fin-subpage active" style="display:block">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Saída/Custo</th><th>Entrada/Valor</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Saída/Custo</th><th>Entrada/Valor</th><th style="text-align:right">Ações</th></tr></thead>
           <tbody id="finBody"></tbody>
         </table>
       </div>
@@ -4551,7 +4551,11 @@
     }
   }
 
+  let _editLancId = null;
   function abrirModalLancamento(tipo) {
+    _editLancId = null;
+    document.getElementById('modalLancamentoTitulo').innerText = 'Novo Lançamento';
+    document.getElementById('finParcelasGroup').style.display = 'block';
     document.getElementById('finData').value = getLocalISO();
     document.getElementById('finTipo').value = tipo || 'entrada';
     document.getElementById('finDesc').value = '';
@@ -4592,6 +4596,41 @@
     else i.disabled = true;
   }
 
+  
+  function editarLancamentoCompleto(id) {
+    const d = getFin();
+    const l = d.lancamentos.find(x => x.id == id);
+    if (!l) return;
+    
+    _editLancId = id;
+    
+    document.getElementById('finData').value = l.data || '';
+    document.getElementById('finTipo').value = l.tipo || 'entrada';
+    document.getElementById('finDesc').value = l.desc || '';
+    document.getElementById('finValor').value = l.valor || '';
+    
+    const custoInput = document.getElementById('finCusto');
+    if (custoInput) custoInput.value = l.custo || '';
+    toggleFinCustoVisibility();
+    
+    document.getElementById('finCat').value = l.categoria || '';
+    document.getElementById('finFp').value = l.formaPagamento || '';
+    
+    const statusInput = document.getElementById('finStatus');
+    if (statusInput) statusInput.value = l.status || 'pago';
+    toggleFinVencimento();
+    
+    const vencInput = document.getElementById('finVencimento');
+    if (vencInput) vencInput.value = l.dataVencimento || '';
+    
+    // Esconde a parte de parcelas, pois ao editar não vamos re-parcelar
+    const pGroup = document.getElementById('finParcelasGroup');
+    if (pGroup) pGroup.style.display = 'none';
+    
+    document.getElementById('modalLancamentoTitulo').innerText = 'Editar Lançamento';
+    document.getElementById('modalLancamento').style.display = 'flex';
+  }
+
   function salvarLancamento() {
     if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editCaixa)) {
       toast('❌ Você não tem permissão para fazer lançamentos no Caixa.', true);
@@ -4609,37 +4648,59 @@
     let vencimento = document.getElementById('finVencimento').value || data;
     if (status === 'pago') vencimento = data;
     
-    const parcelas = parseInt(document.getElementById('finParcelas').value) || 1;
-    const intervalo = parseInt(document.getElementById('finIntervalo').value) || 30;
     const custo = tipo === 'entrada' ? (parseFloat(document.getElementById('finCusto').value) || 0) : 0;
-    
     const d = getFin();
-    const valParcela = parseFloat((valor / parcelas).toFixed(2));
-    const custoParcela = parseFloat((custo / parcelas).toFixed(2));
     
-    for (let i = 0; i < parcelas; i++) {
-      let dataP = new Date(vencimento + 'T12:00:00');
-      if (i > 0) {
-        dataP.setDate(dataP.getDate() + (intervalo * i));
+    if (_editLancId !== null) {
+      // Modo Edição
+      const index = d.lancamentos.findIndex(x => x.id == _editLancId);
+      if (index > -1) {
+        d.lancamentos[index].data = data;
+        d.lancamentos[index].desc = desc;
+        d.lancamentos[index].tipo = tipo;
+        d.lancamentos[index].categoria = cat;
+        d.lancamentos[index].formaPagamento = fp;
+        d.lancamentos[index].status = status;
+        d.lancamentos[index].dataVencimento = vencimento;
+        d.lancamentos[index].valor = parseFloat(valor.toFixed(2));
+        d.lancamentos[index].custo = parseFloat(custo.toFixed(2));
+        if (_finFotoTemp) {
+          d.lancamentos[index].fotoRecibo = _finFotoTemp;
+        }
       }
-      const dataStr = dataP.toISOString().split('T')[0];
+      _editLancId = null;
+    } else {
+      // Modo Criação
+      const parcelas = parseInt(document.getElementById('finParcelas').value) || 1;
+      const intervalo = parseInt(document.getElementById('finIntervalo').value) || 30;
       
-      let descP = parcelas > 1 ? `${desc} (Parc. ${i+1}/${parcelas})` : desc;
+      const valParcela = parseFloat((valor / parcelas).toFixed(2));
+      const custoParcela = parseFloat((custo / parcelas).toFixed(2));
       
-      d.lancamentos.push({
-        id: d.nextId++,
-        data: data,
-        desc: descP,
-        categoria: cat,
-        tipo,
-        valor: valParcela,
-        custo: custoParcela,
-        formaPagamento: fp,
-        status: status,
-        dataVencimento: dataStr,
-        parcelaInfo: parcelas > 1 ? `${i+1}/${parcelas}` : null,
-        fotoRecibo: _finFotoTemp || null
-      });
+      for (let i = 0; i < parcelas; i++) {
+        let dataP = new Date(vencimento + 'T12:00:00');
+        if (i > 0) {
+          dataP.setDate(dataP.getDate() + (intervalo * i));
+        }
+        const dataStr = dataP.toISOString().split('T')[0];
+        
+        let descP = parcelas > 1 ? `${desc} (Parc. ${i+1}/${parcelas})` : desc;
+        
+        d.lancamentos.push({
+          id: d.nextId++,
+          data: data,
+          desc: descP,
+          categoria: cat,
+          tipo,
+          valor: valParcela,
+          custo: custoParcela,
+          formaPagamento: fp,
+          status: status,
+          dataVencimento: dataStr,
+          parcelaInfo: parcelas > 1 ? `${i+1}/${parcelas}` : null,
+          fotoRecibo: _finFotoTemp || null
+        });
+      }
     }
     
     saveFin(d);
@@ -5035,11 +5096,10 @@
       const fotoBtn = l.fotoRecibo ? `<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 6px" onclick="abrirFotoRecibo('${l.fotoRecibo}')" title="Ver Recibo/Comprovante">📸</button>` : '';
       
       let baixarBtn = '';
-      let editarBtn = '';
       if ((l.status || 'pago') === 'pendente') {
           baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
-          editarBtn = l.automatico ? '' : `<button class="btn btn-sm btn-secondary" onclick="editarVencimento('${l.id}')">✏️</button>`;
       }
+      const editarBtn = l.automatico ? '' : `<button class="btn btn-sm btn-secondary" onclick="editarLancamentoCompleto('${l.id}')">✏️</button>`;
       
       // Coluna Saída/Custo
       let colSaidaCusto = '<span style="color:var(--text-muted)">—</span>';
@@ -5073,7 +5133,7 @@
         <td>${statusBadge}</td>
         <td>${colSaidaCusto}</td>
         <td>${colEntradaValor}</td>
-        <td><div style="display:flex;gap:4px">${fotoBtn}${baixarBtn}${editarBtn}${excluirBtn === '—' ? '' : excluirBtn}</div></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end">${fotoBtn}${baixarBtn}${editarBtn}${excluirBtn === '—' ? '' : excluirBtn}</div></td>
       </tr>`;
     }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
     
