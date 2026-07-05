@@ -1076,8 +1076,8 @@
       
       <div class="tabs" id="finTabsContainer" style="margin-bottom:16px;border-bottom:1px solid var(--border)">
         <button class="tab active" onclick="showFinTab('extrato')">Visão Geral</button>
-        <button class="tab fin-admin-only" onclick="showFinTab('apagar')">Contas a Pagar</button>
-        <button class="tab fin-admin-only" onclick="showFinTab('areceber')">Contas a Receber</button>
+        <button class="tab fin-admin-only" onclick="showFinTab('apagar')">Despesas (Saídas)</button>
+        <button class="tab fin-admin-only" onclick="showFinTab('areceber')">Receitas (Entradas)</button>
         <button class="tab fin-admin-only" onclick="showFinTab('dre')">DRE Mensal</button>
       </div>
 
@@ -4898,9 +4898,9 @@
     let extratoLista = listaCompleta;
     
     if (_activeFinTab === 'apagar') {
-        extratoLista = extratoLista.filter(l => (l.status||'pago') === 'pendente' && l.tipo === 'saida');
+        extratoLista = extratoLista.filter(l => l.tipo === 'saida');
     } else if (_activeFinTab === 'areceber') {
-        extratoLista = extratoLista.filter(l => (l.status||'pago') === 'pendente' && l.tipo === 'entrada');
+        extratoLista = extratoLista.filter(l => l.tipo === 'entrada');
     }
 
     if (periodo) extratoLista = extratoLista.filter(l => (l.dataVencimento || l.data) >= periodo.de && (l.dataVencimento || l.data) <= periodo.ate);
@@ -4964,22 +4964,44 @@
         `;
       } else if (_activeFinTab === 'apagar') {
         let valAPagar = 0;
-        lista.forEach(l => { if (l.tipo === 'saida') valAPagar += parseFloat(l.valor)||0; });
+        let valPago = 0;
+        lista.forEach(l => { 
+          if (l.tipo === 'saida') {
+            if ((l.status||'pago') === 'pendente') valAPagar += parseFloat(l.valor)||0;
+            else valPago += parseFloat(l.valor)||0;
+          }
+        });
         stats.innerHTML = `
           <div class="stat-card" style="border-color:var(--danger)">
-            <span class="stat-label">🔴 Total A Pagar${periodoLabel}</span>
+            <span class="stat-label">🔴 Total Pendente (A Pagar)${periodoLabel}</span>
             <span class="stat-value red">R$ ${formatMoney(valAPagar)}</span>
-            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Soma das contas pendentes filtradas</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Despesas pendentes filtradas</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--text-muted)">
+            <span class="stat-label">✔️ Total Já Pago${periodoLabel}</span>
+            <span class="stat-value" style="color:var(--text-muted)">R$ ${formatMoney(valPago)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Despesas já quitadas filtradas</span>
           </div>
         `;
       } else if (_activeFinTab === 'areceber') {
         let valAReceber = 0;
-        lista.forEach(l => { if (l.tipo === 'entrada') valAReceber += parseFloat(l.valor)||0; });
+        let valRecebido = 0;
+        lista.forEach(l => { 
+          if (l.tipo === 'entrada') {
+            if ((l.status||'pago') === 'pendente') valAReceber += parseFloat(l.valor)||0;
+            else valRecebido += parseFloat(l.valor)||0;
+          }
+        });
         stats.innerHTML = `
           <div class="stat-card" style="border-color:var(--success)">
-            <span class="stat-label">🟢 Total A Receber${periodoLabel}</span>
+            <span class="stat-label">🟢 Total Pendente (A Receber)${periodoLabel}</span>
             <span class="stat-value green">R$ ${formatMoney(valAReceber)}</span>
-            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Soma das entradas pendentes filtradas</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Receitas pendentes filtradas</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--text-muted)">
+            <span class="stat-label">✔️ Total Já Recebido${periodoLabel}</span>
+            <span class="stat-value" style="color:var(--text-muted)">R$ ${formatMoney(valRecebido)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Receitas já quitadas filtradas</span>
           </div>
         `;
       }
@@ -4998,9 +5020,16 @@
     tbody.innerHTML = listaFiltrada.map(l => {
       const dt    = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
       const pgto  = l.formaPagamento ? `<span style="font-size:11px;color:var(--text-muted)"> · ${l.formaPagamento}</span>` : '';
-      // Permite exclusão de fantasmas antigos de Sangria mesmo que estejam marcados como automático no banco
-      const excluirBtn = (l.automatico && !l.desc.includes('Sangria do Caixa')) ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
+      // Botões de Ação
+      const excluirBtn = (l.automatico && !l.desc.includes('Sangria do Caixa')) ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento('${l.id}')">🗑️</button>`;
       const fotoBtn = l.fotoRecibo ? `<button class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 6px" onclick="abrirFotoRecibo('${l.fotoRecibo}')" title="Ver Recibo/Comprovante">📸</button>` : '';
+      
+      let baixarBtn = '';
+      let editarBtn = '';
+      if ((l.status || 'pago') === 'pendente') {
+          baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
+          editarBtn = l.automatico ? '' : `<button class="btn btn-sm btn-secondary" onclick="editarVencimento('${l.id}')">✏️</button>`;
+      }
       
       // Coluna Saída/Custo
       let colSaidaCusto = '<span style="color:var(--text-muted)">—</span>';
@@ -5020,17 +5049,21 @@
         ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>`
         : '<span style="color:var(--text-muted)">—</span>';
         
-      const statusBadge = `<span class="badge badge-concluido">Pago</span>`;
+      let statusBadge = `<span class="badge badge-concluido">Pago</span>`;
+      if ((l.status || 'pago') === 'pendente') {
+        const isAtrasado = l.dataVencimento && new Date(l.dataVencimento + 'T12:00:00') < new Date(getLocalISO() + 'T12:00:00');
+        statusBadge = isAtrasado ? `<span class="badge badge-danger">Atrasado</span>` : `<span class="badge badge-pendente" style="background:var(--accent)">Pendente</span>`;
+      }
       
       return `<tr>
-        <td>${dt}</td>
+        <td>${(l.status||'pago')==='pendente' && l.dataVencimento ? new Date(l.dataVencimento+'T12:00').toLocaleDateString('pt-BR') : dt}</td>
         <td>${l.desc}${pgto}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'Entrada':'Saída'}</span></td>
         <td>${statusBadge}</td>
         <td>${colSaidaCusto}</td>
         <td>${colEntradaValor}</td>
-        <td><div style="display:flex;gap:4px">${fotoBtn}${excluirBtn === '—' && !fotoBtn ? '—' : excluirBtn === '—' ? '' : excluirBtn}</div></td>
+        <td><div style="display:flex;gap:4px">${fotoBtn}${baixarBtn}${editarBtn}${excluirBtn === '—' ? '' : excluirBtn}</div></td>
       </tr>`;
     }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum lançamento no período selecionado.</td></tr>';
     
