@@ -4533,6 +4533,19 @@
     setTimeout(() => document.getElementById('finDesc').focus(), 50);
   }
 
+  function toggleFinVencimento() {
+    const st = document.getElementById('finStatus').value;
+    const v = document.getElementById('finVencimento');
+    if (st === 'pendente') { v.disabled = false; if (!v.value) v.value = document.getElementById('finData').value; }
+    else { v.disabled = true; v.value = ''; }
+  }
+  function toggleFinParcelas() {
+    const p = parseInt(document.getElementById('finParcelas').value) || 1;
+    const i = document.getElementById('finIntervalo');
+    if (p > 1) i.disabled = false;
+    else i.disabled = true;
+  }
+
   function salvarLancamento() {
     if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editCaixa)) {
       toast('❌ Você não tem permissão para fazer lançamentos no Caixa.', true);
@@ -5355,18 +5368,7 @@
       }
     }
 
-    function toggleFinVencimento() {
-    const st = document.getElementById('finStatus').value;
-    const v = document.getElementById('finVencimento');
-    if (st === 'pendente') { v.disabled = false; if (!v.value) v.value = document.getElementById('finData').value; }
-    else { v.disabled = true; v.value = ''; }
-  }
-  function toggleFinParcelas() {
-    const p = parseInt(document.getElementById('finParcelas').value) || 1;
-    const i = document.getElementById('finIntervalo');
-    if (p > 1) i.disabled = false;
-    else i.disabled = true;
-  }
+
 
   function init() {
       try {
