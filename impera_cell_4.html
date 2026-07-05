@@ -1361,7 +1361,9 @@
           <option value="Crédito">Crédito</option>
           <option value="Débito">Débito</option>
         </select>
-        <label style="display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-size:12px;font-weight:500;text-transform:none;color:var(--text-muted)">
+      </div>
+      <div class="form-group full">
+        <label style="display:flex;align-items:center;gap:6px;margin-top:0px;cursor:pointer;font-size:12px;font-weight:500;text-transform:none;color:var(--text-muted)">
           <input type="checkbox" id="vendaPagamentoDividido" onchange="toggleDividirPagamento()" style="width:auto" />
           Cliente pagou com duas formas de pagamento?
         </label>
@@ -1369,7 +1371,7 @@
       <div class="form-group full" id="vendaFormaDividida" style="display:none">
         <div class="form-grid">
           <div class="form-group">
-            <label>Forma de Pagamento 1</label>
+            <label>Forma 1</label>
             <select id="vendaFormaPagamento1">
               <option value="Dinheiro">Dinheiro</option>
               <option value="Pix">Pix</option>
@@ -1378,11 +1380,11 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Valor Pago — Forma 1 (R$)</label>
+            <label>Valor 1 (R$)</label>
             <input type="number" id="vendaValorPag1" min="0" step="0.01" placeholder="0,00" oninput="sincronizarValor2()" />
           </div>
           <div class="form-group">
-            <label>Forma de Pagamento 2</label>
+            <label>Forma 2</label>
             <select id="vendaFormaPagamento2">
               <option value="Dinheiro">Dinheiro</option>
               <option value="Pix">Pix</option>
@@ -1391,8 +1393,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Valor Pago — Forma 2 (R$)</label>
-            <input type="number" id="vendaValorPag2" min="0" step="0.01" readonly style="opacity:0.75" />
+            <label>Valor 2 (R$)</label>
+            <input type="number" id="vendaValorPag2" min="0" step="0.01" readonly style="opacity:0.75;background:var(--surface2)" />
           </div>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px">O valor da Forma 2 é calculado automaticamente (Total − Forma 1).</div>
@@ -3931,6 +3933,22 @@
     if (inp && !inp.value) inp.value = new Date().toISOString().slice(0,10);
   }
 
+  function toggleDividirPagamento() {
+    const isDiv = document.getElementById('vendaPagamentoDividido').checked;
+    document.getElementById('vendaFormaSimplesWrap').style.display = isDiv ? 'none' : 'block';
+    document.getElementById('vendaFormaDividida').style.display = isDiv ? 'block' : 'none';
+    if (isDiv) sincronizarValor2();
+  }
+
+  function sincronizarValor2() {
+    const p = parseFloat(document.getElementById('vendaPreco').value) || 0;
+    const q = parseInt(document.getElementById('vendaQuantidade').value) || 0;
+    const total = p * q;
+    const pag1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
+    const pag2 = Math.max(0, total - pag1);
+    document.getElementById('vendaValorPag2').value = pag2.toFixed(2);
+  }
+
   function abrirModalVenda() {
     document.getElementById('vendaEditId').value = '';
     document.getElementById('vendaBarcode').value = '';
@@ -3938,6 +3956,12 @@
     document.getElementById('vendaPreco').value = '';
     document.getElementById('vendaQuantidade').value = 1;
     document.getElementById('vendaFormaPagamento').value = 'Dinheiro';
+    
+    // Reseta pagamento dividido
+    document.getElementById('vendaPagamentoDividido').checked = false;
+    document.getElementById('vendaValorPag1').value = '';
+    document.getElementById('vendaValorPag2').value = '';
+    toggleDividirPagamento();
     prefillVendasData();
     document.getElementById('vendaData').value = document.getElementById('vendasData').value || new Date().toISOString().slice(0,10);
     
@@ -3995,6 +4019,9 @@
     const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
     const qtd = parseInt(document.getElementById('vendaQuantidade').value) || 0;
     document.getElementById('vendaTotalPreview').textContent = formatMoney(preco * qtd);
+    if (document.getElementById('vendaPagamentoDividido').checked) {
+      sincronizarValor2();
+    }
   }
 
   function salvarVenda() {
@@ -4009,26 +4036,58 @@
     const data = document.getElementById('vendaData').value;
     const editId = document.getElementById('vendaEditId').value;
 
+    const isDiv = document.getElementById('vendaPagamentoDividido').checked;
+
     if (!descricao || !data || isNaN(preco) || preco <= 0 || isNaN(quantidade) || quantidade <= 0) {
       toast('Preencha descrição, preço, quantidade e data corretamente.', true);
       return;
     }
 
     const total = preco * quantidade;
+    
+    if (isDiv) {
+      const pag1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
+      const pag2 = parseFloat(document.getElementById('vendaValorPag2').value) || 0;
+      if (pag1 <= 0 || pag2 <= 0 || (pag1 + pag2) !== total) {
+        toast('❌ Os valores divididos estão incorretos.', true);
+        return;
+      }
+    }
+
     const d = getVendas();
     const vendedorEscolhido = document.getElementById('vendaVendedor') ? document.getElementById('vendaVendedor').value : (currentUser ? currentUser.name : '');
 
     if (editId) {
+      if (isDiv) {
+        toast('❌ Vendas divididas não podem ser editadas diretamente (apague e refaça).', true);
+        return;
+      }
       const v = d.vendas.find(x => x.id === Number(editId));
       if (v) Object.assign(v, { descricao, preco, quantidade, formaPagamento, data, total, vendedor: vendedorEscolhido });
     } else {
-      d.vendas.push({
-        id: d.nextId++,
-        data,
-        hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        descricao, preco, quantidade, total, formaPagamento,
-        vendedor: vendedorEscolhido
-      });
+      if (isDiv) {
+        const f1 = document.getElementById('vendaFormaPagamento1').value;
+        const v1 = parseFloat(document.getElementById('vendaValorPag1').value) || 0;
+        const f2 = document.getElementById('vendaFormaPagamento2').value;
+        const v2 = parseFloat(document.getElementById('vendaValorPag2').value) || 0;
+        
+        d.vendas.push({
+          id: d.nextId++, data, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          descricao: descricao + ` (${f1})`, preco: v1, quantidade: quantidade, total: v1, formaPagamento: f1, vendedor: vendedorEscolhido
+        });
+        d.vendas.push({
+          id: d.nextId++, data, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          descricao: descricao + ` (${f2})`, preco: v2, quantidade: 0, total: v2, formaPagamento: f2, vendedor: vendedorEscolhido
+        });
+      } else {
+        d.vendas.push({
+          id: d.nextId++,
+          data,
+          hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          descricao, preco, quantidade, total, formaPagamento,
+          vendedor: vendedorEscolhido
+        });
+      }
     }
     saveVendas(d);
     closeModal('modalVenda');
