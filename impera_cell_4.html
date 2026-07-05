@@ -586,6 +586,7 @@
   <div class="tab" id="tab-estoque" onclick="showPage('estoque')">📦 Estoque</div>
   <div class="tab" id="tab-financeiro" onclick="showPage('financeiro')">💰 Financeiro</div>
   <div class="tab" id="tab-tabela" onclick="showPage('tabela')">💲 Tabela de Preços</div>
+  <div class="tab" id="tab-vendedores" onclick="showPage('vendedores')" style="display:none;">👥 Vendedores</div>
   <div class="tab" id="tab-usuarios" onclick="showPage('usuarios')" style="display:none;">⚙️ Usuários</div>
 </nav>
 
@@ -1179,6 +1180,46 @@
   </div>
 
 </main>
+
+<!-- PAGE VENDEDORES -->
+  <div class="page" id="page-vendedores">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">👥</span> Gerenciar Vendedores</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalVendedor()">+ Novo Vendedor</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaVendedoresBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<!-- MODAL VENDEDOR -->
+<div class="modal-overlay" id="modalVendedor">
+  <div class="modal" style="width:100%;max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title" id="modalVendedorTitulo">Novo Vendedor</span>
+      <button class="modal-close" onclick="closeModal('modalVendedor')">✕</button>
+    </div>
+    <div class="form-group full" style="margin-bottom:16px">
+      <label>Nome do Vendedor *</label>
+      <input type="text" id="vendedorNome" placeholder="Ex: João Silva" />
+    </div>
+    <input type="hidden" id="vendedorEditId" />
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="salvarVendedor()">✅ Salvar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL USUARIO -->
 <div class="modal-overlay" id="modalUsuario">
@@ -1926,6 +1967,12 @@
     { id: 3, username: "vendedor1", pin: "2222", role: "vendedor", name: "Vendedor 1", perms: { editOS: false, deleteOS: false, viewCaixa: false, viewEstoque: true, viewVendas: true, config: false } }
   ];
 
+  let appVendedores = [];
+
+  async function _saveAppVendedores() {
+    await _sbSetConfig('appVendedores', appVendedores);
+  }
+
   async function _saveAppUsers() {
     await _sbSetConfig('appUsers', appUsers);
   }
@@ -1992,6 +2039,7 @@
     setDisplay('tab-estoque', p.viewEstoque);
     setDisplay('tab-financeiro', p.viewCaixa);
     setDisplay('tab-usuarios', isAdmin);
+    setDisplay('tab-vendedores', isAdmin);
     setDisplay('wrap-custo-servico', isAdmin);
     
     // Redireciona se estiver em página que perdeu acesso
@@ -4625,7 +4673,7 @@
     if (id === 'estoque') renderEstoque();
     if (id === 'financeiro') { popularMeses(); renderFinanceiro(); }
     if (id === 'tabela') renderTabela();
-    if (id === 'usuarios') renderUsuarios();
+    if (id === 'usuarios') renderUsuarios();\n    renderVendedores();
   }
 
   // ── Melhorar imprimirOS — layout fiel ao PDF ──
