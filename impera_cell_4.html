@@ -5016,9 +5016,9 @@
       const statusBadge = isAtrasado ? `<span class="badge badge-danger">Atrasado</span>` : `<span class="badge badge-pendente" style="background:var(--accent)">Pendente</span>`;
       const valorStr = l.tipo === 'entrada' ? `<strong style="color:var(--success)">+ ${formatMoney(l.valor)}</strong>` : `<strong style="color:var(--danger)">- ${formatMoney(l.valor)}</strong>`;
       
-      const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
+      const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento('${l.id}')">🗑️</button>`;
       const baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
-      const editarBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-secondary" onclick="editarVencimento(${l.id})">✏️</button>`;
+      const editarBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-secondary" onclick="editarVencimento('${l.id}')">✏️</button>`;
       
       return `<tr>
         <td style="${isAtrasado ? 'color:var(--danger)' : ''}">${dt}</td>
