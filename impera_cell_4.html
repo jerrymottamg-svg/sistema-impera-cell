@@ -5087,6 +5087,15 @@
     }
 
     function init() {
+      try {
+        const f = getFin();
+        const oldLen = f.lancamentos.length;
+        f.lancamentos = f.lancamentos.filter(l => !(l.automatico && l.desc.includes('Sangria do Caixa')));
+        if (f.lancamentos.length < oldLen) {
+          saveFin(f);
+        }
+      } catch(e) {}
+
       canvas = document.getElementById('senhaCanvas');
       if (!canvas) return;
       ctx = canvas.getContext('2d');
