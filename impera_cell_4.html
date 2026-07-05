@@ -1937,6 +1937,13 @@
   }
 
   function _vendaToRow(v) {
+    const extraData = {
+      fp: v.formaPagamento || '',
+      vendedor: v.vendedor || '',
+      desconto: v.desconto || 0,
+      isRetirada: !!v.isRetirada,
+      pagamentos: v.pagamentos || null
+    };
     return {
       id: v.id,
       data: v.data || '',
@@ -1945,11 +1952,16 @@
       preco: parseFloat(v.preco) || 0,
       quantidade: parseInt(v.quantidade) || 1,
       total: parseFloat(v.total) || 0,
-      forma_pagamento: v.formaPagamento || '',
+      forma_pagamento: JSON.stringify(extraData),
     };
   }
 
   function _rowToVenda(row) {
+    let fp = row.forma_pagamento || '';
+    let extra = {};
+    if (fp.startsWith('{')) {
+      try { extra = JSON.parse(fp); fp = extra.fp; } catch(e){}
+    }
     return {
       id: row.id,
       data: row.data || '',
@@ -1958,7 +1970,11 @@
       preco: parseFloat(row.preco) || 0,
       quantidade: parseInt(row.quantidade) || 1,
       total: parseFloat(row.total) || 0,
-      formaPagamento: row.forma_pagamento || '',
+      formaPagamento: fp,
+      vendedor: extra.vendedor || '',
+      desconto: extra.desconto || 0,
+      isRetirada: !!extra.isRetirada,
+      pagamentos: extra.pagamentos || null
     };
   }
 
