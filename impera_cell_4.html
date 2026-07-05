@@ -1450,6 +1450,27 @@
   </div>
 </div>
 
+<!-- ─── MODAL EDITAR VENCIMENTO ─── -->
+<div class="modal-overlay" id="modalEditVencimento">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Alterar Vencimento</span>
+      <button class="modal-close" onclick="closeModal('modalEditVencimento')">✕</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group full">
+        <label>Nova Data de Vencimento</label>
+        <input type="date" id="editVencimentoData" />
+      </div>
+    </div>
+    <input type="hidden" id="editVencimentoId" value="" />
+    <div class="actions-row">
+      <button class="btn btn-primary" onclick="salvarNovoVencimento()">✅ Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalEditVencimento')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── MODAL NOVA VENDA ─── -->
 <div class="modal-overlay" id="modalVenda">
   <div class="modal" style="max-width:520px">
@@ -5016,20 +5037,26 @@
     const l = d.lancamentos.find(x => x.id == id);
     if (!l) return;
     
-    const novaData = prompt('Digite a nova data de vencimento (DD/MM/AAAA):', new Date((l.dataVencimento||l.data)+'T12:00').toLocaleDateString('pt-BR'));
-    if (!novaData) return;
+    document.getElementById('editVencimentoId').value = id;
+    document.getElementById('editVencimentoData').value = l.dataVencimento || l.data;
+    document.getElementById('modalEditVencimento').classList.add('open');
+  }
+
+  function salvarNovoVencimento() {
+    const id = document.getElementById('editVencimentoId').value;
+    const novaData = document.getElementById('editVencimentoData').value;
+    if (!novaData) { toast('Selecione uma data!', true); return; }
     
-    const parts = novaData.split('/');
-    if (parts.length === 3) {
-      const isoData = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      l.dataVencimento = isoData;
-      l.data = isoData; // Mantém fallback sincronizado
-      saveFin(d);
-      toast('Vencimento alterado com sucesso!');
-      renderFinanceiro();
-    } else {
-      toast('Formato inválido. Use DD/MM/AAAA.', true);
+    const d = getFin();
+    const l = d.lancamentos.find(x => x.id == id);
+    if (l) {
+        l.dataVencimento = novaData;
+        l.data = novaData; // Mantém fallback sincronizado
+        saveFin(d);
+        toast('Vencimento alterado com sucesso!');
+        renderFinanceiro();
     }
+    closeModal('modalEditVencimento');
   }
 
   function baixarLancamento(id) {
