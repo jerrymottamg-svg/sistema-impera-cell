@@ -1192,6 +1192,11 @@
       
       if(tab === 'dre') {
          document.getElementById('fin-tab-dre').style.display = 'block';
+         const pd = getPeriodoDatas();
+         if (pd && pd.de) {
+             const dreInput = document.getElementById('dreMes');
+             if (dreInput) dreInput.value = pd.de.substring(0, 7);
+         }
          renderDRE();
       } else {
          document.getElementById('fin-tab-extrato').style.display = 'block';
@@ -4874,7 +4879,18 @@
       customWrap.style.display = 'none';
       mesSelect.style.display = 'none';
     }
-    renderFinanceiro();
+    
+    const pd = getPeriodoDatas();
+    if (pd && pd.de) {
+       const dreInput = document.getElementById('dreMes');
+       if (dreInput) dreInput.value = pd.de.substring(0, 7);
+    }
+    
+    if (_activeFinTab === 'dre') {
+       renderDRE();
+    } else {
+       renderFinanceiro();
+    }
   }
 
   function onMesChange() {
