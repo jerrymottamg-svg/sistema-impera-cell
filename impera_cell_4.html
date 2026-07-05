@@ -535,6 +535,7 @@
   </style>
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
   <!-- Loading overlay durante inicialização -->
@@ -3859,12 +3860,44 @@
         <td>${badge}</td>
         <td>
           <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" onclick="imprimirEtiquetaProduto(${p.id})" title="Imprimir Etiqueta">🖨️</button>
             <button class="btn btn-sm btn-secondary" onclick="abrirModalProduto(${p.id})">✏️</button>
             <button class="btn btn-sm btn-danger" onclick="excluirProduto(${p.id})">🗑</button>
           </div>
         </td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum produto. Clique em "+ Novo Produto" para começar.</td></tr>';
+  }
+
+  function imprimirEtiquetaProduto(id) {
+    const d = getEstoque();
+    const p = d.produtos.find(x => x.id === id);
+    if (!p) return;
+    
+    const code = p.barcode || ('PRD' + String(p.id).padStart(5, '0'));
+    
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = `
+      <div style="width: 50mm; text-align: center; font-family: sans-serif; padding: 10px;">
+        <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nome}</div>
+        <svg id="barcode-svg"></svg>
+        <div style="font-size: 10px; margin-top: 5px;">${p.categoria} ${p.custo > 0 ? '— Custo: R$ ' + p.custo.toFixed(2).replace('.',',') : ''}</div>
+      </div>
+    `;
+    
+    try {
+      JsBarcode("#barcode-svg", code, {
+        format: "CODE128",
+        width: 1.5,
+        height: 40,
+        displayValue: true,
+        fontSize: 12,
+        margin: 0
+      });
+      window.print();
+    } catch (e) {
+      toast('❌ Erro ao gerar código de barras: ' + e.message, true);
+    }
   }
 
   // ── Financeiro ──
