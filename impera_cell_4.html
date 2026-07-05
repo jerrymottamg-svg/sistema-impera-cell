@@ -6038,6 +6038,70 @@
     }
   }
 
+  // ── Vendedores CRUD ──
+  function renderVendedores() {
+    const tbody = document.getElementById('tabelaVendedoresBody');
+    if (!tbody) return;
+    tbody.innerHTML = appVendedores.map(v => `
+      <tr>
+        <td>${v.id}</td>
+        <td>${v.name}</td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="abrirModalVendedor(${v.id})">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="excluirVendedor(${v.id})">🗑</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-muted)">Nenhum vendedor cadastrado.</td></tr>';
+  }
+
+  function abrirModalVendedor(id = null) {
+    const elId = document.getElementById('vendedorEditId');
+    const elNome = document.getElementById('vendedorNome');
+    if (id) {
+      const v = appVendedores.find(x => x.id === id);
+      if (v) {
+        elId.value = v.id;
+        elNome.value = v.name;
+        document.getElementById('modalVendedorTitulo').textContent = 'Editar Vendedor';
+      }
+    } else {
+      elId.value = '';
+      elNome.value = '';
+      document.getElementById('modalVendedorTitulo').textContent = 'Novo Vendedor';
+    }
+    document.getElementById('modalVendedor').classList.add('open');
+  }
+
+  async function salvarVendedor() {
+    if (currentUser?.role !== 'admin') {
+      return toast('❌ Apenas administradores podem gerenciar vendedores.', true);
+    }
+    const idVal = document.getElementById('vendedorEditId').value;
+    const nome = document.getElementById('vendedorNome').value.trim();
+    if (!nome) return toast('Preencha o nome do vendedor.', true);
+    if (idVal) {
+      const v = appVendedores.find(x => x.id == idVal);
+      if (v) v.name = nome;
+    } else {
+      const newId = appVendedores.length ? Math.max(...appVendedores.map(x => x.id)) + 1 : 1;
+      appVendedores.push({ id: newId, name: nome });
+    }
+    await _saveAppVendedores();
+    closeModal('modalVendedor');
+    toast('✅ Vendedor salvo!');
+    renderVendedores();
+  }
+
+  async function excluirVendedor(id) {
+    if (currentUser?.role !== 'admin') return;
+    if (confirm('Tem certeza que deseja excluir este vendedor?')) {
+      appVendedores = appVendedores.filter(v => v.id !== id);
+      await _saveAppVendedores();
+      toast('Vendedor excluído!');
+      renderVendedores();
+    }
+  }
+
 </script>
 </body>
 </html>
