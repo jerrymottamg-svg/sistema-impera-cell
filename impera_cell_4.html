@@ -4784,6 +4784,16 @@
 
   function renderFinanceiro() {
     const d = getFin();
+    const tabsCont = document.getElementById('finTabsContainer');
+    if (tabsCont) {
+      if (currentUser?.role === 'admin') {
+        tabsCont.style.display = 'flex';
+      } else {
+        tabsCont.style.display = 'none';
+        document.querySelectorAll('.fin-subpage').forEach(e => e.style.display = 'none');
+        document.getElementById('fin-tab-extrato').style.display = 'block';
+      }
+    }
     const search = (document.getElementById('searchFin')?.value || '').toLowerCase();
     const tipo   = document.getElementById('filterTipoFin')?.value || '';
     const cat    = document.getElementById('filterCatFin')?.value || '';
