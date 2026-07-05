@@ -4898,7 +4898,7 @@
     let extratoLista = listaCompleta;
     
     if (_activeFinTab === 'apagar') {
-        extratoLista = extratoLista.filter(l => l.tipo === 'saida');
+        extratoLista = extratoLista.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria'));
     } else if (_activeFinTab === 'areceber') {
         extratoLista = extratoLista.filter(l => l.tipo === 'entrada');
     }
@@ -4966,7 +4966,7 @@
         let valAPagar = 0;
         let valPago = 0;
         lista.forEach(l => { 
-          if (l.tipo === 'saida') {
+          if (l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria')) {
             if ((l.status||'pago') === 'pendente') valAPagar += parseFloat(l.valor)||0;
             else valPago += parseFloat(l.valor)||0;
           }
