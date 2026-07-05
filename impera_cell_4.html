@@ -4795,7 +4795,7 @@
     if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir este lançamento?')) return;
     const d = getFin();
-    d.lancamentos = d.lancamentos.filter(x => x.id !== id);
+    d.lancamentos = d.lancamentos.filter(x => x.id != id);
     saveFin(d);
     renderFinanceiro();
     toast('Lançamento excluído.');
