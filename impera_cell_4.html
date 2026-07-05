@@ -4997,6 +4997,7 @@
       
       const excluirBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-danger" onclick="excluirLancamento(${l.id})">🗑️</button>`;
       const baixarBtn = `<button class="btn btn-sm btn-primary" onclick="baixarLancamento('${l.id}')">Baixar</button>`;
+      const editarBtn = l.automatico ? '—' : `<button class="btn btn-sm btn-secondary" onclick="editarVencimento(${l.id})">✏️</button>`;
       
       return `<tr>
         <td style="${isAtrasado ? 'color:var(--danger)' : ''}">${dt}</td>
@@ -5005,11 +5006,32 @@
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'A Receber':'A Pagar'}</span></td>
         <td>${statusBadge}</td>
         <td>${valorStr}</td>
-        <td><div style="display:flex;gap:4px">${baixarBtn}${excluirBtn==='—'?'':excluirBtn}</div></td>
+        <td><div style="display:flex;gap:4px">${baixarBtn}${editarBtn==='—'?'':editarBtn}${excluirBtn==='—'?'':excluirBtn}</div></td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhuma conta pendente! 🎉</td></tr>';
   }
   
+  function editarVencimento(id) {
+    const d = getFin();
+    const l = d.lancamentos.find(x => x.id == id);
+    if (!l) return;
+    
+    const novaData = prompt('Digite a nova data de vencimento (DD/MM/AAAA):', new Date((l.dataVencimento||l.data)+'T12:00').toLocaleDateString('pt-BR'));
+    if (!novaData) return;
+    
+    const parts = novaData.split('/');
+    if (parts.length === 3) {
+      const isoData = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      l.dataVencimento = isoData;
+      l.data = isoData; // Mantém fallback sincronizado
+      saveFin(d);
+      toast('Vencimento alterado com sucesso!');
+      renderFinanceiro();
+    } else {
+      toast('Formato inválido. Use DD/MM/AAAA.', true);
+    }
+  }
+
   function baixarLancamento(id) {
     if (!confirm('Deseja dar baixa neste lançamento? Ele será liquidado no dia de hoje.')) return;
     const d = getFin();
