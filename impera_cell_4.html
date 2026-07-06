@@ -1393,6 +1393,7 @@
       <div class="form-group"><label>Quantidade</label><input type="number" id="prodQtd" placeholder="0" min="0" value="0" /></div>
       <div class="form-group"><label>Qtd. Mínima (alerta)</label><input type="number" id="prodMin" placeholder="3" min="0" value="3" /></div>
       <div class="form-group"><label>Custo unitário (R$)</label><input type="number" id="prodCusto" placeholder="0,00" min="0" step="0.01" value="0" /></div>
+      <div class="form-group"><label>Preço de venda (R$)</label><input type="number" id="prodPreco" placeholder="0,00" min="0" step="0.01" value="0" /></div>
       <div class="form-group full"><label>Observações</label><input type="text" id="prodObs" placeholder="Fornecedor, compatibilidade..." /></div>
     </div>
     <input type="hidden" id="prodEditId" value="" />
@@ -4009,6 +4010,7 @@
       document.getElementById('prodQtd').value = p.qtd;
       document.getElementById('prodMin').value = p.min;
       document.getElementById('prodCusto').value = p.custo;
+      document.getElementById('prodPreco').value = p.preco || 0;
       document.getElementById('prodObs').value = p.obs || '';
       document.getElementById('prodBarcode').value = p.barcode || '';
     } else {
@@ -4017,6 +4019,7 @@
       document.getElementById('prodQtd').value = 0;
       document.getElementById('prodMin').value = 3;
       document.getElementById('prodCusto').value = 0;
+      document.getElementById('prodPreco').value = 0;
     }
     document.getElementById('modalProduto').classList.add('open');
   }
@@ -4035,6 +4038,7 @@
       qtd: parseFloat(document.getElementById('prodQtd').value) || 0,
       min: parseFloat(document.getElementById('prodMin').value) || 0,
       custo: parseFloat(document.getElementById('prodCusto').value) || 0,
+      preco: parseFloat(document.getElementById('prodPreco').value) || 0,
       obs: document.getElementById('prodObs').value.trim(),
       barcode: document.getElementById('prodBarcode').value.trim(),
     };
@@ -4256,8 +4260,12 @@
       const p = d.produtos.find(x => x.barcode === code);
       if (p) {
         document.getElementById('vendaDescricao').value = p.nome;
+        if (p.preco) {
+           document.getElementById('vendaPreco').value = p.preco;
+           atualizarTotalVenda();
+        }
         toast('✅ Produto localizado: ' + p.nome);
-        setTimeout(() => document.getElementById('vendaPreco').focus(), 50);
+        setTimeout(() => document.getElementById(p.preco ? 'vendaQuantidade' : 'vendaPreco').focus(), 50);
       } else {
         toast('❌ Produto não encontrado no estoque!', true);
       }
