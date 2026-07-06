@@ -4524,15 +4524,25 @@
       const ce = ci + pf['Dinheiro'] - rt;
       const ativo = dia === data;
       const strTot = currentUser?.role === 'admin' ? formatMoney(tot) : '***';
+      
+      const isPast = dia < getLocalISO();
+      const hideValues = currentUser?.role !== 'admin' && isPast;
+      
+      const strDin = hideValues ? '***' : formatMoney(pf['Dinheiro']);
+      const strPix = hideValues ? '***' : formatMoney(pf['Pix']);
+      const strCred = hideValues ? '***' : formatMoney(pf['Crédito']);
+      const strDeb = hideValues ? '***' : formatMoney(pf['Débito']);
+      const strCaixa = hideValues ? '***' : formatMoney(ce);
+      
       return `<tr style="cursor:pointer;${ativo ? 'background:var(--surface2)' : ''}" onclick="document.getElementById('vendasData').value='${dia}'; renderVendas();">
         <td>${new Date(dia+'T12:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' })}</td>
         <td>${formatMoney(ci)}</td>
         <td><strong style="color:var(--gold)">${strTot}</strong></td>
-        <td>${formatMoney(pf['Dinheiro'])}</td>
-        <td>${formatMoney(pf['Pix'])}</td>
-        <td>${formatMoney(pf['Crédito'])}</td>
-        <td>${formatMoney(pf['Débito'])}</td>
-        <td><strong style="color:var(--success)">${formatMoney(ce)}</strong></td>
+        <td>${strDin}</td>
+        <td>${strPix}</td>
+        <td>${strCred}</td>
+        <td>${strDeb}</td>
+        <td><strong style="color:var(--success)">${strCaixa}</strong></td>
       </tr>`;
     }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Nenhum dia registrado ainda.</td></tr>';
   }
