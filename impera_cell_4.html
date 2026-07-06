@@ -1392,7 +1392,7 @@
       </div>
       <div class="form-group"><label>Quantidade</label><input type="number" id="prodQtd" placeholder="0" min="0" value="0" /></div>
       <div class="form-group"><label>Qtd. Mínima (alerta)</label><input type="number" id="prodMin" placeholder="3" min="0" value="3" /></div>
-      <div class="form-group"><label>Custo unitário (R$)</label><input type="number" id="prodCusto" placeholder="0,00" min="0" step="0.01" value="0" /></div>
+      <div class="form-group fin-admin-only"><label>Custo unitário (R$)</label><input type="number" id="prodCusto" placeholder="0,00" min="0" step="0.01" value="0" /></div>
       <div class="form-group"><label>Preço de venda (R$)</label><input type="number" id="prodPreco" placeholder="0,00" min="0" step="0.01" value="0" /></div>
       <div class="form-group full"><label>Observações</label><input type="text" id="prodObs" placeholder="Fornecedor, compatibilidade..." /></div>
     </div>
@@ -4103,7 +4103,7 @@
           </div>
         </td>
         <td>${p.min}</td>
-        <td>${p.custo > 0 ? formatMoney(p.custo) : '—'}</td>
+        <td>${currentUser?.role === 'admin' ? (p.custo > 0 ? formatMoney(p.custo) : '—') : '***'}</td>
         <td>${badge}</td>
         <td>
           <div style="display:flex;gap:6px">
