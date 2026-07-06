@@ -1513,7 +1513,14 @@
       </div>
       <div class="form-group full">
         <label>Descrição do Produto *</label>
-        <input type="text" id="vendaDescricao" placeholder="Ex: Capinha iPhone 13, Película 3D, Carregador..." />
+        <div style="position:relative">
+          <input type="text" id="vendaDescricao"
+            placeholder="Ex: Capinha iPhone 13, Película 3D, Carregador..."
+            oninput="vendaAutocompleteProduto(this.value)"
+            onkeydown="vendaAutocompleteKey(event)"
+            autocomplete="off" />
+          <div id="vendaAutocompleteList" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:9999;max-height:220px;overflow-y:auto;margin-top:4px"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>Preço Unitário (R$) *</label>
@@ -4270,6 +4277,63 @@
     document.getElementById('vendaValorPag2').value = pag2.toFixed(2);
   }
 
+  let _autocompleteIndex = -1;
+
+  function vendaAutocompleteProduto(query) {
+    const list = document.getElementById('vendaAutocompleteList');
+    _autocompleteIndex = -1;
+    if (!query || query.length < 1) { list.style.display = 'none'; list.innerHTML = ''; return; }
+    const d = getEstoque();
+    const q = query.toLowerCase();
+    const matches = d.produtos.filter(p => p.nome.toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q))).slice(0, 10);
+    if (!matches.length) { list.style.display = 'none'; list.innerHTML = ''; return; }
+    list.innerHTML = matches.map((p, i) => {
+      const precoStr = p.preco ? ` — <span style="color:var(--success);font-weight:600">${formatMoney(p.preco)}</span>` : '';
+      const estoqueStr = `<span style="font-size:10px;color:var(--text-muted);margin-left:6px">Estoque: ${p.qtd}</span>`;
+      return `<div data-idx="${i}" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .15s"
+        onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''"
+        onclick="vendaAutocompleteSelect(${p.id})">
+        <span style="font-size:14px">${p.nome} <span style="font-size:11px;color:var(--text-muted)">(${p.categoria})</span>${precoStr}</span>
+        ${estoqueStr}
+      </div>`;
+    }).join('');
+    list.style.display = 'block';
+  }
+
+  function vendaAutocompleteSelect(prodId) {
+    const d = getEstoque();
+    const p = d.produtos.find(x => x.id === prodId);
+    if (!p) return;
+    document.getElementById('vendaDescricao').value = p.nome;
+    if (p.preco) {
+      document.getElementById('vendaPreco').value = p.preco;
+      atualizarTotalVenda();
+    }
+    document.getElementById('vendaAutocompleteList').style.display = 'none';
+    document.getElementById('vendaAutocompleteList').innerHTML = '';
+    setTimeout(() => document.getElementById(p.preco ? 'vendaQuantidade' : 'vendaPreco').focus(), 50);
+  }
+
+  function vendaAutocompleteKey(e) {
+    const list = document.getElementById('vendaAutocompleteList');
+    const items = list.querySelectorAll('div[data-idx]');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _autocompleteIndex = Math.min(_autocompleteIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.style.background = i === _autocompleteIndex ? 'var(--surface3)' : '');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _autocompleteIndex = Math.max(_autocompleteIndex - 1, 0);
+      items.forEach((el, i) => el.style.background = i === _autocompleteIndex ? 'var(--surface3)' : '');
+    } else if (e.key === 'Enter' && _autocompleteIndex >= 0) {
+      e.preventDefault();
+      items[_autocompleteIndex]?.click();
+    } else if (e.key === 'Escape') {
+      list.style.display = 'none';
+    }
+  }
+
   function abrirModalVenda() {
     document.getElementById('vendaEditId').value = '';
     document.getElementById('vendaBarcode').value = '';
@@ -6801,6 +6865,13 @@
 
     checkSession();
     await _initSupabase();
+    document.addEventListener('click', (e) => {
+      const list = document.getElementById('vendaAutocompleteList');
+      const input = document.getElementById('vendaDescricao');
+      if (list && input && !input.contains(e.target) && !list.contains(e.target)) {
+        list.style.display = 'none';
+      }
+    });
     if (typeof renderDashboard === 'function') renderDashboard();
     if (typeof atualizarBackupInfo === 'function') atualizarBackupInfo();
   });
