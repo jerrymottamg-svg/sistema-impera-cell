@@ -1593,6 +1593,7 @@
       Total da venda: <strong id="vendaTotalPreview" style="color:var(--gold);font-size:18px">R$ 0,00</strong>
     </div>
     <input type="hidden" id="vendaEditId" />
+    <input type="hidden" id="vendaProdutoId" value="" />
     <div class="actions-row">
       <button class="btn btn-primary" onclick="salvarVenda()">✅ Salvar Venda</button>
       <button class="btn btn-secondary" onclick="closeModal('modalVenda')">Cancelar</button>
@@ -4307,6 +4308,7 @@
     const p = d.produtos.find(x => x.id === prodId);
     if (!p) return;
     document.getElementById('vendaDescricao').value = p.nome;
+    document.getElementById('vendaProdutoId').value = p.id;
     if (p.preco) {
       document.getElementById('vendaPreco').value = p.preco;
       atualizarTotalVenda();
@@ -4338,6 +4340,7 @@
 
   function abrirModalVenda() {
     document.getElementById('vendaEditId').value = '';
+    document.getElementById('vendaProdutoId').value = '';
     document.getElementById('vendaBarcode').value = '';
     document.getElementById('vendaDescricao').value = '';
     document.getElementById('vendaPreco').value = '';
@@ -4373,6 +4376,7 @@
       const p = d.produtos.find(x => x.barcode === code);
       if (p) {
         document.getElementById('vendaDescricao').value = p.nome;
+        document.getElementById('vendaProdutoId').value = p.id;
         if (p.preco) {
            document.getElementById('vendaPreco').value = p.preco;
            atualizarTotalVenda();
@@ -4489,6 +4493,19 @@
       });
     }
     saveVendas(d);
+    
+    // Subtrai do estoque se o produto foi selecionado do catalogo
+    const produtoId = parseInt(document.getElementById('vendaProdutoId').value);
+    if (!editId && produtoId) {
+      const est = getEstoque();
+      const prod = est.produtos.find(x => x.id === produtoId);
+      if (prod) {
+        prod.qtd = Math.max(0, (prod.qtd || 0) - quantidade);
+        saveEstoque(est);
+        renderEstoque();
+      }
+    }
+    
     closeModal('modalVenda');
     toast('✅ Venda salva!');
     document.getElementById('vendasData').value = data;
