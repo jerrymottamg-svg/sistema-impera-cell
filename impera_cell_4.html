@@ -4953,8 +4953,17 @@
     });
 
     // ── Juntar tudo ──
-    let listaCompleta = [...d.lancamentos, ...lancamentosVendas]
-      .sort((a,b) => b.data.localeCompare(a.data));
+    let listaCompleta = [...d.lancamentos, ...lancamentosVendas].map(l => {
+         let iso = (l.dataVencimento || l.data) || '';
+         if (iso.includes('/')) {
+             let p = iso.split(',')[0].split(' ')[0].split('/');
+             if (p.length === 3) iso = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+         } else {
+             iso = iso.substring(0, 10);
+         }
+         return { ...l, isoData: iso };
+    });
+    listaCompleta.sort((a,b) => b.isoData.localeCompare(a.isoData));
 
     // Filtro de período e busca aplicados na lista completa
     if (search) listaCompleta = listaCompleta.filter(l => l.desc.toLowerCase().includes(search) || l.categoria.toLowerCase().includes(search));
@@ -4968,13 +4977,13 @@
         extratoLista = extratoLista.filter(l => l.tipo === 'entrada');
     }
 
-    if (periodo) extratoLista = extratoLista.filter(l => (l.dataVencimento || l.data) >= periodo.de && (l.dataVencimento || l.data) <= periodo.ate);
+    if (periodo) extratoLista = extratoLista.filter(l => l.isoData >= periodo.de && l.isoData <= periodo.ate);
 
     // Lista da tabela respeita também tipo e categoria
     let lista = extratoLista.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
     
     // Lista A Pagar/Receber
-    let futuroLista = listaCompleta.filter(l => (l.status || 'pago') === 'pendente').sort((a,b) => (a.dataVencimento||a.data).localeCompare(b.dataVencimento||b.data));
+    let futuroLista = listaCompleta.filter(l => (l.status || 'pago') === 'pendente').sort((a,b) => a.isoData.localeCompare(b.isoData));
     futuroLista = futuroLista.filter(l => (!tipo || l.tipo === tipo) && (!cat || l.categoria === cat));
 
     const listPagos = extratoLista.filter(l => (l.status || 'pago') === 'pago');
