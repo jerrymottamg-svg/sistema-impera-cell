@@ -1045,6 +1045,11 @@
         <div class="card-title"><span class="icon">📦</span> Controle de Estoque</div>
         <button class="btn btn-primary btn-sm" onclick="abrirModalProduto()">+ Novo Produto</button>
       </div>
+      
+      <div class="stats-grid fin-admin-only" id="estoqueStats" style="margin-top:16px; margin-bottom:16px">
+        <!-- preenchido dinamicamente -->
+      </div>
+      
       <div class="search-bar">
         <input type="text" id="searchEstoque" placeholder="🔍  Buscar produto..." oninput="renderEstoque()" />
         <select id="filterCategoria" onchange="renderEstoque()" style="min-width:160px">
@@ -4086,6 +4091,35 @@
     let lista = d.produtos;
     if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search) || (p.barcode && p.barcode.includes(search)));
     if (cat) lista = lista.filter(p => p.categoria === cat);
+    
+    let custoTotal = 0;
+    let vendaTotal = 0;
+    lista.forEach(p => {
+       const q = p.qtd > 0 ? p.qtd : 0;
+       custoTotal += (p.custo || 0) * q;
+       vendaTotal += (p.preco || p.custo || 0) * q;
+    });
+    
+    const stats = document.getElementById('estoqueStats');
+    if (stats) {
+      stats.innerHTML = `
+        <div class="stat-card" style="border-color:var(--danger)">
+          <span class="stat-label">📉 Custo Total (Investido)</span>
+          <span class="stat-value red">${formatMoney(custoTotal)}</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Soma do custo de todas as peças</span>
+        </div>
+        <div class="stat-card" style="border-color:var(--success)">
+          <span class="stat-label">📈 Valor Total de Venda</span>
+          <span class="stat-value green">${formatMoney(vendaTotal)}</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Faturamento potencial esperado</span>
+        </div>
+        <div class="stat-card" style="border-color:var(--gold)">
+          <span class="stat-label">💰 Lucro Bruto Estimado</span>
+          <span class="stat-value gold">${formatMoney(vendaTotal - custoTotal)}</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Vendas − Custos</span>
+        </div>
+      `;
+    }
 
     const tbody = document.getElementById('estoqueBody');
     if (!tbody) return;
