@@ -4000,6 +4000,11 @@
   function abrirModalProduto(id) {
     prodEditId = id || null;
     const titulo = document.getElementById('modalProdutoTitle');
+    
+    const adminOnly = document.getElementById('modalProduto').querySelectorAll('.fin-admin-only');
+    const isAdmin = currentUser?.role === 'admin';
+    adminOnly.forEach(el => el.style.display = isAdmin ? '' : 'none');
+    
     if (id) {
       const d = getEstoque();
       const p = d.produtos.find(x => x.id === id);
