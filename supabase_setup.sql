@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS estoque (
   qtd NUMERIC(10,2) DEFAULT 0,
   minimo NUMERIC(10,2) DEFAULT 0,
   custo NUMERIC(10,2) DEFAULT 0,
+  preco NUMERIC(10,2) DEFAULT 0,
   observacoes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
