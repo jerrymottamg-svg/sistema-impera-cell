@@ -4097,26 +4097,34 @@
         : baixo
           ? `<span class="badge badge-aguardando">Baixo</span>`
           : `<span class="badge badge-concluido">OK</span>`;
-      return `<tr>
-        <td>${p.nome}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${p.obs}</div>` : ''}</td>
-        <td>${p.categoria}</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:6px">
+      const canEdit = currentUser?.role === 'admin' || (currentUser?.perms && currentUser.perms.editEstoque);
+      
+      const qtdControls = canEdit 
+        ? `<div style="display:flex;align-items:center;gap:6px">
             <button class="btn btn-sm btn-secondary" style="padding:2px 8px" onclick="ajustarQtd(${p.id},-1)">−</button>
             <strong style="font-size:15px;min-width:24px;text-align:center;color:${critico?'var(--danger)':baixo?'var(--gold)':'var(--success)'}">${p.qtd}</strong>
             <button class="btn btn-sm btn-secondary" style="padding:2px 8px" onclick="ajustarQtd(${p.id},1)">+</button>
-          </div>
-        </td>
-        <td>${p.min}</td>
-        <td>${currentUser?.role === 'admin' ? (p.custo > 0 ? formatMoney(p.custo) : '—') : '***'}</td>
-        <td>${badge}</td>
-        <td>
-          <div style="display:flex;gap:6px">
+          </div>`
+        : `<strong style="font-size:15px;color:${critico?'var(--danger)':baixo?'var(--gold)':'var(--success)'}">${p.qtd}</strong>`;
+        
+      const acoesHtml = canEdit
+        ? `<div style="display:flex;gap:6px">
             <button class="btn btn-sm btn-secondary" onclick="imprimirEtiquetaProduto(${p.id})" title="Imprimir Etiqueta">🖨️</button>
             <button class="btn btn-sm btn-secondary" onclick="abrirModalProduto(${p.id})">✏️</button>
             <button class="btn btn-sm btn-danger" onclick="excluirProduto(${p.id})">🗑</button>
-          </div>
-        </td>
+          </div>`
+        : `<div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" onclick="imprimirEtiquetaProduto(${p.id})" title="Imprimir Etiqueta">🖨️</button>
+          </div>`;
+
+      return `<tr>
+        <td>${p.nome}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${p.obs}</div>` : ''}</td>
+        <td>${p.categoria}</td>
+        <td>${qtdControls}</td>
+        <td>${p.min}</td>
+        <td>${currentUser?.role === 'admin' ? (p.custo > 0 ? formatMoney(p.custo) : '—') : '***'}</td>
+        <td>${badge}</td>
+        <td>${acoesHtml}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum produto. Clique em "+ Novo Produto" para começar.</td></tr>';
   }
