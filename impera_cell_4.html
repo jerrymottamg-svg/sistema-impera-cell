@@ -1077,6 +1077,8 @@
       <div class="tabs" id="finTabsContainer" style="margin-bottom:16px;border-bottom:1px solid var(--border)">
         <button class="tab active" onclick="showFinTab('extrato')">Visão Geral</button>
         <button class="tab fin-admin-only" onclick="showFinTab('apagar')">Despesas (Saídas)</button>
+        <button class="tab fin-admin-only" onclick="showFinTab('despesas-fixas')">Despesas Fixas</button>
+        <button class="tab fin-admin-only" onclick="showFinTab('despesas-variaveis')">Despesas Variáveis</button>
         <button class="tab fin-admin-only" onclick="showFinTab('areceber')">Receitas (Entradas)</button>
         <button class="tab fin-admin-only" onclick="showFinTab('dre')">DRE Mensal</button>
       </div>
@@ -4997,6 +4999,10 @@
         extratoLista = extratoLista.filter(l => l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa' && !l.desc.includes('Sangria'));
     } else if (_activeFinTab === 'areceber') {
         extratoLista = extratoLista.filter(l => l.tipo === 'entrada');
+    } else if (_activeFinTab === 'despesas-fixas') {
+        extratoLista = extratoLista.filter(l => l.tipo === 'saida' && ['Aluguel', 'Energia / Água', 'Salário', 'Despesa Fixa'].includes(l.categoria));
+    } else if (_activeFinTab === 'despesas-variaveis') {
+        extratoLista = extratoLista.filter(l => l.tipo === 'saida' && !['Compra de Peças', 'Sangria de Caixa', 'Aluguel', 'Energia / Água', 'Salário', 'Despesa Fixa'].includes(l.categoria) && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA'));
     }
 
     if (periodo) extratoLista = extratoLista.filter(l => l.isoData >= periodo.de && l.isoData <= periodo.ate);
