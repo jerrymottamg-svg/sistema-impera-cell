@@ -4526,13 +4526,14 @@
       const strTot = currentUser?.role === 'admin' ? formatMoney(tot) : '***';
       
       const isPast = dia < getLocalISO();
-      const hideValues = currentUser?.role !== 'admin' && isPast;
+      const hideDinheiro = currentUser?.role !== 'admin' && isPast;
+      const hideOutros = currentUser?.role !== 'admin';
       
-      const strDin = hideValues ? '***' : formatMoney(pf['Dinheiro']);
-      const strPix = hideValues ? '***' : formatMoney(pf['Pix']);
-      const strCred = hideValues ? '***' : formatMoney(pf['Crédito']);
-      const strDeb = hideValues ? '***' : formatMoney(pf['Débito']);
-      const strCaixa = hideValues ? '***' : formatMoney(ce);
+      const strDin = hideDinheiro ? '***' : formatMoney(pf['Dinheiro']);
+      const strPix = hideOutros ? '***' : formatMoney(pf['Pix']);
+      const strCred = hideOutros ? '***' : formatMoney(pf['Crédito']);
+      const strDeb = hideOutros ? '***' : formatMoney(pf['Débito']);
+      const strCaixa = hideDinheiro ? '***' : formatMoney(ce);
       
       return `<tr style="cursor:pointer;${ativo ? 'background:var(--surface2)' : ''}" onclick="document.getElementById('vendasData').value='${dia}'; renderVendas();">
         <td>${new Date(dia+'T12:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' })}</td>
