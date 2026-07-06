@@ -4987,6 +4987,12 @@
          }
          return { ...l, isoData: iso };
     });
+    
+    // Oculta despesas de quem não é admin
+    if (currentUser?.role !== 'admin') {
+        listaCompleta = listaCompleta.filter(l => !(l.tipo === 'saida' && l.categoria !== 'Sangria de Caixa'));
+    }
+
     listaCompleta.sort((a,b) => b.isoData.localeCompare(a.isoData));
 
     // Filtro de período e busca aplicados na lista completa
