@@ -1421,7 +1421,7 @@
       <div class="form-group fin-admin-only"><label>Data de Vencimento</label><input type="date" id="finVencimento" title="Apenas para contas pendentes" /></div>
       
       <div class="form-group"><label>Categoria</label>
-        <select id="finCat"><option>Serviço OS</option><option>Venda de Acessório</option><option>Compra de Peças</option><option>Aluguel</option><option>Energia / Água</option><option>Salário</option><option>Outros</option></select>
+        <select id="finCat"><option>Serviço OS</option><option>Venda de Acessório</option><option>Compra de Peças</option><option>Despesa Fixa</option><option>Despesa Variável</option><option>Aluguel</option><option>Energia / Água</option><option>Salário</option><option>Outros</option></select>
       </div>
       <div class="form-group"><label>Forma de Pagamento</label>
         <select id="finFp"><option>Dinheiro</option><option>Pix</option><option>Débito</option><option>Crédito</option></select>
@@ -1429,8 +1429,8 @@
       <div class="form-group"><label>Valor (R$) *</label><input type="number" id="finValor" placeholder="0,00" min="0" step="0.01" /></div>
       <div class="form-group" id="finCustoGroup"><label>Custo (R$)</label><input type="number" id="finCusto" placeholder="0,00" min="0" step="0.01" /></div>
       
-      <!-- Parcelamento -->
-      <div id="finParcelasGroup">
+      <!-- Parcelamento / Recorrência -->
+      <div id="finParcelasGroup" style="display:flex;gap:10px;">
         <div class="form-group fin-admin-only"><label>Parcelamento</label>
           <select id="finParcelas" onchange="toggleFinParcelas()">
             <option value="1">À Vista (1x)</option>
@@ -1441,6 +1441,16 @@
         </div>
         <div class="form-group fin-admin-only"><label>Intervalo (dias)</label>
           <input type="number" id="finIntervalo" value="30" min="1" title="Dias entre parcelas" />
+        </div>
+        <div class="form-group fin-admin-only"><label>Recorrência (Mensal)</label>
+          <select id="finRecorrencia" onchange="if(this.value!=='1') document.getElementById('finParcelas').value='1';">
+            <option value="1">Não Repetir</option>
+            <option value="2">Repetir por 2 Meses</option>
+            <option value="3">Repetir por 3 Meses</option>
+            <option value="6">Repetir por 6 Meses</option>
+            <option value="12">Repetir por 1 Ano</option>
+            <option value="24">Repetir por 2 Anos</option>
+          </select>
         </div>
       </div>
 
@@ -4672,18 +4682,30 @@
       // Modo Criação
       const parcelas = parseInt(document.getElementById('finParcelas').value) || 1;
       const intervalo = parseInt(document.getElementById('finIntervalo').value) || 30;
+      const recorrencia = parseInt(document.getElementById('finRecorrencia')?.value) || 1;
       
       const valParcela = parseFloat((valor / parcelas).toFixed(2));
       const custoParcela = parseFloat((custo / parcelas).toFixed(2));
       
-      for (let i = 0; i < parcelas; i++) {
+      const iteracoes = recorrencia > 1 ? recorrencia : parcelas;
+      
+      for (let i = 0; i < iteracoes; i++) {
         let dataP = new Date(vencimento + 'T12:00:00');
         if (i > 0) {
-          dataP.setDate(dataP.getDate() + (intervalo * i));
+            if (recorrencia > 1) {
+                dataP.setMonth(dataP.getMonth() + i);
+            } else {
+                dataP.setDate(dataP.getDate() + (intervalo * i));
+            }
         }
         const dataStr = dataP.toISOString().split('T')[0];
         
-        let descP = parcelas > 1 ? `${desc} (Parc. ${i+1}/${parcelas})` : desc;
+        let descP = desc;
+        if (recorrencia > 1) {
+            descP = `${desc} (Mês ${i+1}/${recorrencia})`;
+        } else if (parcelas > 1) {
+            descP = `${desc} (Parc. ${i+1}/${parcelas})`;
+        }
         
         d.lancamentos.push({
           id: d.nextId++,
@@ -4691,8 +4713,8 @@
           desc: descP,
           categoria: cat,
           tipo,
-          valor: valParcela,
-          custo: custoParcela,
+          valor: recorrencia > 1 ? valor : valParcela,
+          custo: recorrencia > 1 ? custo : custoParcela,
           formaPagamento: fp,
           status: status,
           dataVencimento: dataStr,
@@ -5298,8 +5320,8 @@
      const lucroBruto = receitaBruta - custoServicos - custoPecas;
      
      // Despesas Operacionais (ignora Sangria)
-     const despesasFixas = listaCompleta.filter(l => l.tipo === 'saida' && ['Aluguel', 'Energia / Água', 'Salário'].includes(l.categoria)).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
-     const despesasOutras = listaCompleta.filter(l => l.tipo === 'saida' && !['Compra de Peças', 'Sangria de Caixa', 'Aluguel', 'Energia / Água', 'Salário'].includes(l.categoria) && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     const despesasFixas = listaCompleta.filter(l => l.tipo === 'saida' && ['Aluguel', 'Energia / Água', 'Salário', 'Despesa Fixa'].includes(l.categoria)).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
+     const despesasOutras = listaCompleta.filter(l => l.tipo === 'saida' && !['Compra de Peças', 'Sangria de Caixa', 'Aluguel', 'Energia / Água', 'Salário', 'Despesa Fixa'].includes(l.categoria) && !l.desc.includes('Sangria') && !l.desc.includes('RETIRADA')).reduce((s,l) => s+(parseFloat(l.valor)||0), 0);
      
      const totalDespesas = despesasFixas + despesasOutras;
      const lucroLiquido = lucroBruto - totalDespesas;
@@ -5341,7 +5363,7 @@
      
      <div style="display:flex;justify-content:space-between;color:var(--text)"><span>3. DESPESAS OPERACIONAIS</span> <strong class="red">− ${formatMoney(totalDespesas)}</strong></div>
      <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Despesas Fixas (Aluguel, Luz, etc)</span> <span>${formatMoney(despesasFixas)}</span></div>
-     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Outras Despesas</span> <span>${formatMoney(despesasOutras)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Despesas Variáveis</span> <span>${formatMoney(despesasOutras)}</span></div>
      
      <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
      
