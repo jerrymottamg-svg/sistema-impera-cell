@@ -900,22 +900,40 @@
       <div class="form-grid" style="margin-bottom:24px">
         <div class="form-group">
           <label>Tipo de Manutenção *</label>
-          <select id="tipoManutencao">
-            <option value="">Selecione...</option>
-            <option>Troca de Tela</option>
-            <option>Troca de Bateria</option>
-            <option>Troca de Conector de Carga</option>
-            <option>Reparo de Placa</option>
-            <option>Recuperação de Dados</option>
-            <option>Formatação / Software</option>
-            <option>Troca de Tampa Traseira</option>
-            <option>Higienização</option>
-            <option>Troca de Câmera</option>
-            <option>Troca de Alto-falante</option>
-            <option>Troca de Microfone</option>
-            <option>Diagnóstico</option>
-            <option>Outro</option>
-          </select>
+          <div style="position:relative">
+            <input type="text" id="tipoManutencao" placeholder="Selecione ou digite múltiplos..." 
+                   onclick="document.getElementById('tm-dropdown').style.display='block'" 
+                   onblur="setTimeout(() => { const el = document.getElementById('tm-dropdown'); if(el) el.style.display='none'; }, 200)"
+                   autocomplete="off" />
+            <div id="tm-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--surface2); border:1px solid var(--border); border-radius:8px; z-index:99; max-height:200px; overflow-y:auto; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.3)">
+              <style>
+                .tm-opt { padding: 8px 12px; cursor: pointer; border-radius: 4px; transition: background 0.15s; font-size:14px; }
+                .tm-opt:hover { background: var(--surface3); }
+              </style>
+              <div class="tm-opt" onclick="window.addTM('Troca de Tela')">Troca de Tela</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Bateria')">Troca de Bateria</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Conector de Carga')">Troca de Conector de Carga</div>
+              <div class="tm-opt" onclick="window.addTM('Reparo de Placa')">Reparo de Placa</div>
+              <div class="tm-opt" onclick="window.addTM('Recuperação de Dados')">Recuperação de Dados</div>
+              <div class="tm-opt" onclick="window.addTM('Formatação / Software')">Formatação / Software</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Tampa Traseira')">Troca de Tampa Traseira</div>
+              <div class="tm-opt" onclick="window.addTM('Higienização')">Higienização</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Câmera')">Troca de Câmera</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Alto-falante')">Troca de Alto-falante</div>
+              <div class="tm-opt" onclick="window.addTM('Troca de Microfone')">Troca de Microfone</div>
+              <div class="tm-opt" onclick="window.addTM('Diagnóstico')">Diagnóstico</div>
+              <div class="tm-opt" onclick="window.addTM('Outro')">Outro</div>
+            </div>
+            <script>
+              window.addTM = function(val) {
+                const el = document.getElementById('tipoManutencao');
+                if(!el) return;
+                let arr = el.value.split(',').map(x => x.trim()).filter(x => x);
+                if (!arr.includes(val)) arr.push(val);
+                el.value = arr.join(', ');
+              };
+            </script>
+          </div>
         </div>
         <div class="form-group">
           <label>Valor do Serviço (R$)</label>
@@ -994,14 +1012,14 @@
         <table>
           <thead>
             <tr>
-              <th>Nº OS</th>
-              <th>Cliente</th>
-              <th>Aparelho</th>
-              <th>Serviço</th>
-              <th>Técnico</th>
-              <th>Valor</th>
-              <th>Status</th>
-              <th>Data</th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('id')">Nº OS <span id="sort-icon-id"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('cliente')">Cliente <span id="sort-icon-cliente"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('aparelho')">Aparelho <span id="sort-icon-aparelho"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('servico')">Serviço <span id="sort-icon-servico"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('tecnico')">Técnico <span id="sort-icon-tecnico"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('valor')">Valor <span id="sort-icon-valor"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('status')">Status <span id="sort-icon-status"></span></th>
+              <th style="cursor:pointer; user-select:none" onclick="window.setSortOS('data')">Data <span id="sort-icon-data"></span></th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -1052,7 +1070,7 @@
       
       <div class="search-bar">
         <input type="text" id="searchEstoque" placeholder="🔍  Buscar produto..." oninput="renderEstoque()" />
-        <select id="filterCategoria" onchange="renderEstoque()" style="min-width:160px">
+        <select id="filterCategoria" style="min-width:160px">
           <option value="">Todas as categorias</option>
           <option>Telas</option><option>Baterias</option><option>Conectores</option>
           <option>Películas</option><option>Acessórios</option><option>Ferramentas</option><option>Outros</option>
@@ -3336,16 +3354,67 @@
     document.querySelectorAll('.btn-sn').forEach(b => b.classList.remove('sel-s','sel-n'));
   }
 
+  window.currentSortCol = 'data';
+  window.currentSortAsc = false;
+
+  window.setSortOS = function(col) {
+    if (window.currentSortCol === col) {
+      window.currentSortAsc = !window.currentSortAsc;
+    } else {
+      window.currentSortCol = col;
+      window.currentSortAsc = true;
+    }
+    renderListaOS();
+  }
+
   // ── Lista OS ──
   function renderListaOS() {
     const data = getData();
     const search = document.getElementById('searchOS').value.toLowerCase();
     const filterSt = document.getElementById('filterStatus').value;
+    
+    ['id','cliente','aparelho','servico','tecnico','valor','status','data'].forEach(col => {
+      const el = document.getElementById(`sort-icon-${col}`);
+      if (el) {
+        if (col === window.currentSortCol) {
+          el.innerHTML = window.currentSortAsc ? ' ▲' : ' ▼';
+        } else {
+          el.innerHTML = ' <span style="opacity: 0.3">↕</span>';
+        }
+      }
+    });
 
-    let os = [...data.ordens].reverse();
+    let os = [...data.ordens];
+    try {
+      os.sort((a, b) => {
+        let valA, valB;
+        switch(window.currentSortCol) {
+          case 'id': valA = parseInt(a.id, 10) || 0; valB = parseInt(b.id, 10) || 0; break;
+          case 'cliente': valA = (a.nomeCliente||'').toLowerCase(); valB = (b.nomeCliente||'').toLowerCase(); break;
+          case 'aparelho': valA = (a.modeloAparelho||'').toLowerCase(); valB = (b.modeloAparelho||'').toLowerCase(); break;
+          case 'servico': valA = (a.tipoManutencao||'').toLowerCase(); valB = (b.tipoManutencao||'').toLowerCase(); break;
+          case 'tecnico': valA = (a.tecnico||'').toLowerCase(); valB = (b.tecnico||'').toLowerCase(); break;
+          case 'valor': valA = parseFloat(a.valorServico) || 0; valB = parseFloat(b.valorServico) || 0; break;
+          case 'status': valA = (a.status||'').toLowerCase(); valB = (b.status||'').toLowerCase(); break;
+          case 'data':
+          default:
+            valA = a.dataISOEntrada ? new Date(a.dataISOEntrada).getTime() : ((a.dataEntrada && typeof a.dataEntrada === 'string' && a.dataEntrada.split('/').length === 3) ? new Date(`${a.dataEntrada.split('/')[2]}-${a.dataEntrada.split('/')[1]}-${a.dataEntrada.split('/')[0]}T00:00:00`).getTime() : 0);
+            valB = b.dataISOEntrada ? new Date(b.dataISOEntrada).getTime() : ((b.dataEntrada && typeof b.dataEntrada === 'string' && b.dataEntrada.split('/').length === 3) ? new Date(`${b.dataEntrada.split('/')[2]}-${b.dataEntrada.split('/')[1]}-${b.dataEntrada.split('/')[0]}T00:00:00`).getTime() : 0);
+            break;
+        }
+        
+        if (valA < valB) return window.currentSortAsc ? -1 : 1;
+        if (valA > valB) return window.currentSortAsc ? 1 : -1;
+        return window.currentSortAsc ? (parseInt(a.id, 10) - parseInt(b.id, 10)) : (parseInt(b.id, 10) - parseInt(a.id, 10));
+      });
+    } catch(e) {
+      console.error('Erro na ordenacao:', e);
+      os.sort((a,b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+    }
+    
     if (search) os = os.filter(o =>
-      o.nomeCliente.toLowerCase().includes(search) ||
-      o.modeloAparelho.toLowerCase().includes(search) ||
+      (o.nomeCliente || '').toLowerCase().includes(search) ||
+      (o.modeloAparelho || '').toLowerCase().includes(search) ||
       String(o.id).includes(search) ||
       (o.tipoManutencao || '').toLowerCase().includes(search)
     );
@@ -3395,7 +3464,8 @@
     if (!confirm(`Adicionar custo de ${formatMoney(custo)} ao lançamento da OS #${String(id).padStart(4,'0')}?`)) return;
     const fin = getFin();
     // Encontrar o lançamento de entrada desta OS e embutir o custo
-    const lanc = fin.lancamentos.find(l => l.osId === id && l.tipo === 'entrada');
+    const numOSStr = String(id).padStart(4, '0');
+    const lanc = fin.lancamentos.find(l => (l.osId == id || (l.desc && l.desc.includes(`OS #${numOSStr}`))) && l.tipo === 'entrada');
     if (lanc) {
       lanc.custo = custo;
     } else {
@@ -3483,17 +3553,26 @@
     // Lançar entrada no financeiro (custo fica embutido no mesmo lançamento)
     const fin = getFin();
     const custo = parseFloat(os.custoServico) || 0;
-    fin.lancamentos.push({
-      id: fin.nextId++,
-      data: dataPag,
-      desc: `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`,
-      categoria: 'Nota de Serviço',
-      tipo: 'entrada',
-      valor,
-      custo,
-      formaPagamento: forma,
-      osId: id,
-    });
+    const lancExistente = fin.lancamentos.find(l => l.osId === id && l.tipo === 'entrada');
+    if (lancExistente) {
+      lancExistente.data = dataPag;
+      lancExistente.valor = valor;
+      lancExistente.custo = custo;
+      lancExistente.formaPagamento = forma;
+      lancExistente.desc = `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`;
+    } else {
+      fin.lancamentos.push({
+        id: fin.nextId++,
+        data: dataPag,
+        desc: `OS #${String(os.id).padStart(4,'0')} — ${os.nomeCliente} (${os.modeloAparelho})`,
+        categoria: 'Nota de Serviço',
+        tipo: 'entrada',
+        valor,
+        custo,
+        formaPagamento: forma,
+        osId: id,
+      });
+    }
     saveFin(fin);
 
     closeModal('modalPagamentoOS');
@@ -3883,18 +3962,23 @@
       if (valor > 0) {
         const fin = getFin();
         const numOS = String(os.id).padStart(4, '0');
-        fin.lancamentos.push({
-          id: fin.nextId++,
-          data: today(),
-          desc: `OS #${numOS} — ${os.nomeCliente} (${os.marca ? os.marca + ' ' : ''}${os.modeloAparelho})`,
-          categoria: 'Serviço OS',
-          tipo: 'entrada',
-          valor,
-          custo,
-          osId: os.id
-        });
-        saveFin(fin);
-        toast(`✅ OS #${numOS} entregue — R$ ${valor.toFixed(2).replace('.',',')} lançado no financeiro.`);
+        const lancExistente = fin.lancamentos.find(l => l.osId === os.id && l.tipo === 'entrada');
+        if (!lancExistente) {
+          fin.lancamentos.push({
+            id: fin.nextId++,
+            data: getLocalISO(),
+            desc: `OS #${numOS} — ${os.nomeCliente} (${os.marca ? os.marca + ' ' : ''}${os.modeloAparelho})`,
+            categoria: 'Serviço OS',
+            tipo: 'entrada',
+            valor,
+            custo,
+            osId: os.id
+          });
+          saveFin(fin);
+          toast(`✅ OS #${numOS} entregue — R$ ${valor.toFixed(2).replace('.',',')} lançado no financeiro.`);
+        } else {
+          toast(`Status da OS #${String(id).padStart(4,'0')} alterado para ${novoStatus}.`);
+        }
       } else {
         toast(`Status da OS #${String(id).padStart(4,'0')} alterado para ${novoStatus}.`);
       }
@@ -4287,8 +4371,12 @@
     _autocompleteIndex = -1;
     if (!query || query.length < 1) { list.style.display = 'none'; list.innerHTML = ''; return; }
     const d = getEstoque();
-    const q = query.toLowerCase();
-    const matches = d.produtos.filter(p => p.nome.toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q))).slice(0, 10);
+    const normalizeStr = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = normalizeStr(query);
+    const matches = d.produtos.filter(p => 
+      normalizeStr(p.nome).includes(q) || 
+      normalizeStr(p.barcode).includes(q)
+    ).slice(0, 10);
     if (!matches.length) { list.style.display = 'none'; list.innerHTML = ''; return; }
     list.innerHTML = matches.map((p, i) => {
       const precoStr = p.preco ? ` — <span style="color:var(--success);font-weight:600">${formatMoney(p.preco)}</span>` : '';
@@ -4399,7 +4487,14 @@
     document.getElementById('vendaPreco').value = v.preco;
     document.getElementById('vendaQuantidade').value = v.quantidade;
     document.getElementById('vendaDesconto').value = v.desconto || 0;
-    document.getElementById('vendaData').value = v.data;
+    let isoData = v.data || '';
+    if (isoData.includes('/')) {
+      const p = isoData.split(',')[0].split(' ')[0].split('/');
+      if (p.length === 3) isoData = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    } else {
+      isoData = isoData.substring(0, 10);
+    }
+    document.getElementById('vendaData').value = isoData;
 
     if (v.pagamentos && v.pagamentos.length > 1) {
       document.getElementById('vendaPagamentoDividido').checked = true;
@@ -4764,7 +4859,14 @@
     
     _editLancId = id;
     
-    document.getElementById('finData').value = l.data || '';
+    let isoData = l.data || '';
+    if (isoData.includes('/')) {
+      const p = isoData.split(',')[0].split(' ')[0].split('/');
+      if (p.length === 3) isoData = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    } else {
+      isoData = isoData.substring(0, 10);
+    }
+    document.getElementById('finData').value = isoData;
     document.getElementById('finTipo').value = l.tipo || 'entrada';
     document.getElementById('finDesc').value = l.desc || '';
     document.getElementById('finValor').value = l.valor || '';
@@ -5080,6 +5182,34 @@
   }
 
   function renderFinanceiro() {
+    // --- LIMPEZA DE DUPLICATAS DE OS ---
+    try {
+      const finL = getFin();
+      let limpou = false;
+      const vistos = new Set();
+      const novoLanc = [];
+      for (let i = finL.lancamentos.length - 1; i >= 0; i--) {
+        const l = finL.lancamentos[i];
+        if (l.desc && l.desc.startsWith('OS #') && l.tipo === 'entrada' && !l.desc.includes('Custo')) {
+          const match = l.desc.match(/OS #(\d+)/);
+          if (match) {
+            const osNum = match[1];
+            if (vistos.has(osNum)) {
+               limpou = true;
+               continue;
+            }
+            vistos.add(osNum);
+          }
+        }
+        novoLanc.unshift(l);
+      }
+      if (limpou) {
+        finL.lancamentos = novoLanc;
+        saveFin(finL);
+      }
+    } catch(e) {}
+    // -----------------------------------
+
     const d = getFin();
     const tabsCont = document.getElementById('finTabsContainer');
     if (tabsCont) {
@@ -5285,7 +5415,16 @@
       !l.desc.startsWith('Custo –')
     );
     tbody.innerHTML = listaFiltrada.map(l => {
-      const dt    = new Date(l.data+'T12:00').toLocaleDateString('pt-BR');
+      const safeDt = (d) => {
+        if (!d) return '';
+        if (d.includes('/')) return d;
+        if (d.includes('-')) {
+            const p = d.split('T')[0].split('-');
+            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+        }
+        return d;
+      };
+      const dt = safeDt(l.data);
       const pgto  = l.formaPagamento ? `<span style="font-size:11px;color:var(--text-muted)"> · ${l.formaPagamento}</span>` : '';
       // Botões de Ação
       let excluirBtn = '';
@@ -5330,7 +5469,7 @@
       }
       
       return `<tr>
-        <td>${(l.status||'pago')==='pendente' && l.dataVencimento ? new Date(l.dataVencimento+'T12:00').toLocaleDateString('pt-BR') : dt}</td>
+        <td>${(l.status||'pago')==='pendente' && l.dataVencimento ? safeDt(l.dataVencimento) : dt}</td>
         <td>${l.desc}${pgto}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'Entrada':'Saída'}</span></td>
@@ -6704,6 +6843,56 @@
   renderDashboard();
   // Inicializar canvas de senha na primeira carga
   setTimeout(() => { window._senhaPatternInit && window._senhaPatternInit(); }, 100);
+
+  // --- Categorias Dinâmicas do Estoque ---
+  function carregarCategoriasEstoque() {
+    const defaultCats = ['Telas', 'Baterias', 'Conectores', 'Películas', 'Acessórios', 'Ferramentas', 'Outros'];
+    const customCats = JSON.parse(localStorage.getItem('ESTOQUE_CATEGORIAS') || '[]');
+    const todasCats = [...new Set([...defaultCats, ...customCats])];
+    
+    const selects = [document.getElementById('prodCategoria'), document.getElementById('filterCategoria')];
+    selects.forEach(sel => {
+      if (!sel) return;
+      const isFilter = sel.id === 'filterCategoria';
+      const selected = sel.value;
+      sel.innerHTML = isFilter ? '<option value="">Todas as categorias</option>' : '';
+      todasCats.forEach(c => {
+        sel.innerHTML += `<option value="${c}">${c}</option>`;
+      });
+      sel.innerHTML += '<option value="__nova__" style="color:var(--primary);font-weight:bold">+ Nova Categoria...</option>';
+      if (selected && (todasCats.includes(selected) || selected === '')) {
+        sel.value = selected;
+      }
+    });
+  }
+
+  function handleCategoriaChange(e) {
+    const sel = e.target;
+    if (sel.value === '__nova__') {
+      const nova = prompt('Digite o nome da nova categoria:');
+      if (nova && nova.trim()) {
+        const customCats = JSON.parse(localStorage.getItem('ESTOQUE_CATEGORIAS') || '[]');
+        if (!customCats.includes(nova.trim())) {
+          customCats.push(nova.trim());
+          localStorage.setItem('ESTOQUE_CATEGORIAS', JSON.stringify(customCats));
+        }
+        carregarCategoriasEstoque();
+        sel.value = nova.trim();
+        if (sel.id === 'filterCategoria' && typeof renderEstoque === 'function') renderEstoque();
+      } else {
+        carregarCategoriasEstoque(); // reset to default if cancelled
+        sel.value = ''; // reset value
+      }
+    } else {
+      if (sel.id === 'filterCategoria' && typeof renderEstoque === 'function') renderEstoque();
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('prodCategoria')?.addEventListener('change', handleCategoriaChange);
+    document.getElementById('filterCategoria')?.addEventListener('change', handleCategoriaChange);
+    carregarCategoriasEstoque();
+  });
 
 
   // ── Inicializar Supabase ao carregar ──
