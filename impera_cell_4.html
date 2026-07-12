@@ -3395,7 +3395,20 @@
           case 'servico': valA = (a.tipoManutencao||'').toLowerCase(); valB = (b.tipoManutencao||'').toLowerCase(); break;
           case 'tecnico': valA = (a.tecnico||'').toLowerCase(); valB = (b.tecnico||'').toLowerCase(); break;
           case 'valor': valA = parseFloat(a.valorServico) || 0; valB = parseFloat(b.valorServico) || 0; break;
-          case 'status': valA = (a.status||'').toLowerCase(); valB = (b.status||'').toLowerCase(); break;
+          case 'status': 
+            const getStatusWeight = (st) => {
+              const s = (st || '').toLowerCase().trim();
+              if (s === 'em andamento') return 1;
+              if (s === 'aguardando') return 2;
+              if (s.includes('aguardando pe')) return 3;
+              if (s.includes('conclu')) return 4;
+              if (s === 'entregue') return 5;
+              if (s === 'cancelado') return 6;
+              return 99;
+            };
+            valA = getStatusWeight(a.status);
+            valB = getStatusWeight(b.status);
+            break;
           case 'data':
           default:
             valA = a.dataISOEntrada ? new Date(a.dataISOEntrada).getTime() : ((a.dataEntrada && typeof a.dataEntrada === 'string' && a.dataEntrada.split('/').length === 3) ? new Date(`${a.dataEntrada.split('/')[2]}-${a.dataEntrada.split('/')[1]}-${a.dataEntrada.split('/')[0]}T00:00:00`).getTime() : 0);
