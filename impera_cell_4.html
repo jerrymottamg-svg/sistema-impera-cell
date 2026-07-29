@@ -589,6 +589,7 @@
   <div class="tab" id="tab-compatibilidade" onclick="showPage('compatibilidade')">📱 Compatibilidade Películas</div>
   <div class="tab" id="tab-vendedores" onclick="showPage('vendedores')" style="display:none;">👥 Vendedores</div>
   <div class="tab" id="tab-usuarios" onclick="showPage('usuarios')" style="display:none;">⚙️ Usuários</div>
+  <div class="tab" id="tab-diagnostico" onclick="showPage('diagnostico')">🛠️ Diagnóstico de Placas</div>
 </nav>
 
 <!-- BACKUP BAR -->
@@ -603,6 +604,13 @@
 
 <!-- MAIN -->
 <main>
+
+  <!-- 🛠️ DIAGNÓSTICO PLACAS 🛠️ -->
+  <div id="page-diagnostico" class="page">
+    <div class="card" style="padding:0; overflow:hidden; height: calc(100vh - 120px);">
+      <iframe src="diagnostico_falhas_placas.html" style="width: 100%; height: 100%; border: none; border-radius: 10px;"></iframe>
+    </div>
+  </div>
 
   <!-- 📱 COMPATIBILIDADE PELICULAS 📱 -->
   <div id="page-compatibilidade" class="page">
@@ -2265,6 +2273,7 @@
       custo: parseFloat(p.custo) || 0,
       preco: parseFloat(p.preco) || 0,
       observacoes: p.obs || '',
+      barcode: p.barcode || ''
     };
   }
 
@@ -2278,6 +2287,7 @@
       custo: parseFloat(row.custo) || 0,
       preco: parseFloat(row.preco) || 0,
       obs: row.observacoes || '',
+      barcode: row.barcode || ''
     };
   }
 

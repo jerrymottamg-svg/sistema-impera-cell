@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel de Falhas — Impéra Cell</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0b0f0d;
+    --panel: #121815;
+    --panel-2: #161e1a;
+    --line: #223028;
+    --phosphor: #6ffca3;
+    --phosphor-dim: #2f6b4c;
+    --amber: #ffb454;
+    --danger: #ff6b5e;
+    --text: #e8f0ec;
+    --muted: #7d9187;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 28px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 28px 100%,
+      var(--bg);
+    background-blend-mode: normal;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    padding: 28px 20px 60px;
+  }
+
+  .wrap{ max-width: 980px; margin: 0 auto; }
+
+  header{
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 20px 22px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(circle at 15% 20%, rgba(111,252,163,0.06), transparent 55%);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--phosphor);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1{
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .sub{ color: var(--muted); font-size: 14px; max-width: 560px; line-height:1.5; }
+
+  .readout{
+    font-family:'IBM Plex Mono', monospace;
+    display:flex; gap: 22px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .readout div{ font-size: 12px; color: var(--muted); }
+  .readout strong{ display:block; font-size: 20px; color: var(--phosphor); font-weight:700; }
+
+  .controls{
+    display:flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  input[type="text"]{
+    flex: 1; min-width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  input[type="text"]:focus{ border-color: var(--phosphor-dim); }
+  input[type="text"]::placeholder{ color: var(--muted); }
+
+  .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 9px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s ease;
+    user-select:none;
+  }
+  .chip:hover{ border-color: var(--phosphor-dim); color: var(--text); }
+  .chip.active{
+    background: rgba(111,252,163,0.1);
+    border-color: var(--phosphor);
+    color: var(--phosphor);
+  }
+
+  .count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 4px 2px 14px;
+  }
+
+  .card{
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .card-head{
+    display:flex; align-items:center; gap: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .card-head:hover{ background: var(--panel-2); }
+
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 3px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .tag.android{ color: var(--phosphor); border-color: var(--phosphor-dim); }
+  .tag.iphone{ color: var(--amber); border-color: #7a5a26; }
+  .tag.ambos{ color: var(--text); }
+
+  .card-title{ font-weight: 600; font-size: 15px; flex: 1; }
+
+  .meter{ display:flex; gap: 3px; }
+  .meter span{
+    width: 6px; height: 14px; border-radius: 1px;
+    background: var(--line);
+  }
+  .meter span.lit{ background: var(--phosphor); }
+  .meter span.lit.high{ background: var(--danger); }
+
+  .chevron{
+    font-family:'IBM Plex Mono', monospace;
+    color: var(--muted);
+    font-size: 14px;
+    transition: transform .15s ease;
+  }
+  .card.open .chevron{ transform: rotate(90deg); color: var(--phosphor); }
+
+  .card-body{
+    display:none;
+    padding: 4px 18px 18px;
+    border-top: 1px solid var(--line);
+  }
+  .card.open .card-body{ display:block; }
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--phosphor);
+    margin: 16px 0 8px;
+  }
+  .section-label.warn{ color: var(--amber); }
+
+  ul.plain{ margin: 0; padding-left: 18px; color: var(--text); font-size: 14px; line-height: 1.6; }
+  ol.steps{ margin: 0; padding-left: 20px; color: var(--text); font-size: 14px; line-height: 1.7; }
+  ol.steps li{ margin-bottom: 4px; }
+
+  .tools{
+    display:flex; flex-wrap:wrap; gap: 6px; margin-top: 4px;
+  }
+  .tool-pill{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 10px;
+    background: rgba(111,252,163,0.08);
+    border: 1px solid var(--phosphor-dim);
+    color: var(--phosphor);
+  }
+
+  .empty{
+    text-align:center; padding: 50px 20px; color: var(--muted);
+    font-family:'IBM Plex Mono', monospace; font-size: 13px;
+  }
+
+  footer{
+    margin-top: 26px;
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Impéra Cell // Bancada de Diagnóstico</div>
+    <h1>Painel de Falhas Comuns</h1>
+    <div class="sub">Referência rápida de bancada: sintomas, causas prováveis e roteiro de diagnóstico para os defeitos mais frequentes em placas Android e iPhone.</div>
+    <div class="readout">
+      <div>Falhas catalogadas<strong id="statTotal">0</strong></div>
+      <div>Exibindo<strong id="statShown">0</strong></div>
+      <div>Filtro ativo<strong id="statFilter">Todos</strong></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Buscar sintoma, causa ou componente... ex: PMIC, curto, wi-fi">
+  </div>
+  <div class="controls" id="chips"></div>
+  <div class="count" id="countLabel"></div>
+
+  <div id="list"></div>
+  <div class="empty" id="emptyState" style="display:none;">Nenhuma falha encontrada para esse filtro. Ajuste a busca.</div>
+
+  <footer>MÉTODO IMPÉRA CELL — diagnóstico com raciocínio, não por tentativa e erro</footer>
+</div>
+
+<script>
+const FAULTS = [
+  {
+    id:1, nome:"Não liga (sem sinal de vida)", device:"ambos", dificuldade:3,
+    sintomas:["Aparelho não vibra, não acende LED, não mostra nada na tela ao conectar carregador ou apertar power."],
+    causas:["Curto em VBAT ou linha de alimentação principal","PMIC não está habilitando as fontes","Bateria completamente descarregada ou danificada","Conector de bateria com mau contato"],
+    passos:["Testar bateria isolada (tensão deve estar entre 3.5V e 4.2V)","Medir VBAT no conector com multímetro em modo diodo, aparelho desligado","Se VBAT em curto, isolar componente com câmera térmica ou remoção sequencial","Se VBAT normal, medir consumo na fonte de bancada com corrente limitada a 200mA","Verificar se PMIC está habilitando enable lines (comparar com esquema)"],
+    ferramentas:["Multímetro","Fonte de bancada","Câmera térmica"]
+  },
+  {
+    id:2, nome:"Liga e desliga em loop (bootloop)", device:"ambos", dificuldade:3,
+    sintomas:["Aparelho mostra logo, vibra, tenta iniciar e desliga repetidamente."],
+    causas:["Memória (UFS/eMMC) com falha de leitura","Instabilidade em tensão secundária","Componente de RAM com solda fria","Software corrompido (descartar antes de mexer em hardware)"],
+    passos:["Primeiro, descartar causa por software (restaurar/atualizar firmware)","Medir consumo na fonte durante o ciclo de tentativa de boot","Observar em qual momento do consumo o aparelho desliga (indica em que etapa do boot travou)","Reaquecer ou trocar memória se o padrão de consumo indicar falha ali"],
+    ferramentas:["Fonte de bancada","Software de firmware original","Estação de ar quente"]
+  },
+  {
+    id:3, nome:"Reinicia sozinho durante o uso", device:"ambos", dificuldade:2,
+    sintomas:["Aparelho funciona normalmente e reinicia aleatoriamente, geralmente sob carga de processamento ou uso prolongado."],
+    causas:["Solda fria em CPU ou PMIC","Superaquecimento por pasta térmica ressecada","Bateria com queda de tensão sob carga","Capacitor de filtro com falha intermitente"],
+    passos:["Testar com bateria de outro aparelho saudável para descartar bateria","Rodar teste de estresse (benchmark) observando temperatura","Inspecionar solda de CPU/PMIC no microscópio em busca de trincas","Reflow em CPU/PMIC se solda fria for confirmada"],
+    ferramentas:["Microscópio","Estação de ar quente","App de benchmark"]
+  },
+  {
+    id:4, nome:"Não carrega (conectado mas não recebe carga)", device:"ambos", dificuldade:2,
+    sintomas:["Ao conectar o carregador, nada acontece — sem ícone de carga, sem aquecimento no conector."],
+    causas:["Conector de carga sujo, oxidado ou danificado","Charge IC queimado","Fusível de carga rompido","Cabo ou fonte de carregamento com defeito (descartar antes)"],
+    passos:["Testar com outro cabo e fonte para eliminar causa externa","Limpar conector com isopropílico e inspecionar pinos no microscópio","Medir continuidade do fusível de carga","Medir tensão chegando no Charge IC ao conectar o cabo"],
+    ferramentas:["Multímetro","Microscópio","Álcool isopropílico"]
+  },
+  {
+    id:5, nome:"Carrega mas não liga", device:"ambos", dificuldade:2,
+    sintomas:["Ícone de bateria/raio aparece ao conectar, mas o aparelho não liga ao pressionar power."],
+    causas:["Botão de power com defeito físico","PMIC recebe carga mas não processa comando de ligar","Flex do botão de power danificado"],
+    passos:["Testar acionamento do power por curto direto no flex (bypass)","Se ligar por bypass, o problema é no botão físico ou flex","Se não ligar mesmo em bypass, investigar linha de habilitação no PMIC"],
+    ferramentas:["Multímetro","Ferro de solda"]
+  },
+  {
+    id:6, nome:"Sem imagem (liga mas tela preta)", device:"ambos", dificuldade:2,
+    sintomas:["Aparelho vibra, tem som de notificação, mas a tela permanece completamente preta."],
+    causas:["Flex do display rompido ou mal conectado","Display queimado (LCD/OLED)","Backlight IC com defeito (retroiluminação)","Componente na linha de alimentação do display em curto"],
+    passos:["Testar com um display novo/sabidamente bom","Se o display novo também não mostrar imagem, verificar tensão chegando no conector do display","Iluminar a tela original com lanterna forte no ângulo — se aparecer imagem fraca, é falha de backlight, não do painel"],
+    ferramentas:["Display de teste","Multímetro","Lanterna"]
+  },
+  {
+    id:7, nome:"Sem touch (imagem ok, toque não responde)", device:"ambos", dificuldade:2,
+    sintomas:["Tela mostra imagem normalmente, mas não responde ao toque em nenhuma área ou em áreas específicas."],
+    causas:["Flex do touch com mau contato","Touch IC danificado","Película ou película de proteção interferindo (descartar antes)","Umidade residual sob o digitalizador"],
+    passos:["Reconectar flex do touch com cuidado, verificando oxidação no conector","Testar em modo seguro/recovery para descartar app travando a tela","Testar com touch/display de outro aparelho compatível"],
+    ferramentas:["Microscópio","Ferramentas de abertura"]
+  },
+  {
+    id:8, nome:"Consumo alto na fonte de bancada", device:"ambos", dificuldade:4,
+    sintomas:["Ao conectar na fonte de bancada, o consumo sobe rapidamente acima do esperado, mesmo com o aparelho desligado."],
+    causas:["Curto em algum capacitor de filtro","PMIC parcialmente danificado","Componente de RF ou carga em curto"],
+    passos:["Limitar corrente da fonte para 200-300mA imediatamente ao notar consumo alto","Usar câmera térmica para localizar o ponto que esquenta primeiro","Confirmar com multímetro em modo diodo antes de remover qualquer componente","Isolar por seções da placa se não houver esquema (desconectar sub-flexes)"],
+    ferramentas:["Fonte de bancada","Câmera térmica","Multímetro"]
+  },
+  {
+    id:9, nome:"Curto em VBAT", device:"ambos", dificuldade:3,
+    sintomas:["Aparelho não liga, esquenta rápido quando bateria é conectada, consumo alto imediato na fonte."],
+    causas:["Capacitor de filtro próximo ao conector de bateria","PMIC principal em curto interno","Charge IC/Tristar queimado"],
+    passos:["Medir VBAT em modo diodo (abaixo de 100mV ou apitando = curto confirmado)","Usar câmera térmica com corrente limitada na fonte para localizar o ponto quente","Remover apenas o componente identificado, testar novamente antes de prosseguir"],
+    ferramentas:["Multímetro","Câmera térmica","Fonte de bancada","Estação de ar quente"]
+  },
+  {
+    id:10, nome:"Curto em linha secundária (VPH_PWR / VDD_MAIN)", device:"ambos", dificuldade:4,
+    sintomas:["VBAT normal, mas aparelho continua não ligando; consumo sobe alguns segundos após energizar."],
+    causas:["Capacitor de filtro da linha secundária","PMIC não conseguindo habilitar a linha por curto a jusante","Componente específico daquele barramento (RF, memória, etc)"],
+    passos:["Confirmar que VBAT está normal antes de seguir","Consultar esquema para identificar quais componentes pertencem à linha suspeita","Medir ponto a ponto ao longo da trilha até localizar o curto","Isolar componente e testar a linha isoladamente"],
+    ferramentas:["Esquema elétrico (ZXW/BoardView)","Multímetro","Câmera térmica"]
+  },
+  {
+    id:11, nome:"Sem rede / IMEI inválido", device:"ambos", dificuldade:4,
+    sintomas:["Aparelho liga normalmente mas mostra 'sem serviço', IMEI zerado ou inválido nas configurações."],
+    causas:["Baseband corrompido ou não inicializado","Chip de RF/modem com solda fria","Antena ou conector de RF com mau contato (descartar antes)","EEPROM de calibração corrompida"],
+    passos:["Testar com outro chip SIM e verificar se detecta rede em outro aparelho","Checar se IMEI aparece como 0 ou inválido no menu de engenharia","Reprogramar/restaurar baseband via software antes de suspeitar de hardware","Se persistir, investigar reflow no chip de RF/modem"],
+    ferramentas:["Software de firmware","Estação de ar quente","Microscópio"]
+  },
+  {
+    id:12, nome:"Sem Wi-Fi / Bluetooth", device:"ambos", dificuldade:3,
+    sintomas:["Wi-Fi não liga, trava ao ativar, ou não encontra nenhuma rede."],
+    causas:["Chip combo Wi-Fi/Bluetooth com solda fria","Antena ou flex de antena desconectado","Corrosão por oxidação/umidade na área do chip"],
+    passos:["Verificar conexão física de flexes de antena","Testar em modo avião e reativar para ver se recupera","Inspecionar chip combo no microscópio em busca de corrosão","Reflow no chip combo se solda fria for identificada"],
+    ferramentas:["Microscópio","Estação de ar quente"]
+  },
+  {
+    id:13, nome:"Sem áudio (microfone ou alto-falante)", device:"ambos", dificuldade:2,
+    sintomas:["Chamadas sem áudio, microfone não capta voz, ou alto-falante não emite som."],
+    causas:["Audio IC danificado","Flex ou conector do componente de áudio sujo/rompido","Componente físico (speaker/mic) danificado por umidade"],
+    passos:["Testar o componente físico isolado (trocar speaker/mic de teste)","Se o componente novo não resolver, medir continuidade até o Audio IC","Verificar sinais de oxidação por líquido na região"],
+    ferramentas:["Multímetro","Peças de teste"]
+  },
+  {
+    id:14, nome:"PMIC com defeito", device:"ambos", dificuldade:5,
+    sintomas:["Combinação de sintomas: não liga, algumas tensões ausentes, consumo anormal, ou aparelho trava na inicialização."],
+    causas:["PMIC danificado por surto elétrico ou curto prolongado","Solda fria no próprio PMIC","Componente periférico forçando o PMIC a entrar em proteção"],
+    passos:["Mapear quais tensões o PMIC deveria fornecer (via esquema)","Medir cada tensão de saída com o aparelho energizado em baixa corrente","Comparar com os valores de referência do esquema","Se múltiplas tensões ausentes e sem curto externo, considerar reflow ou troca do PMIC"],
+    ferramentas:["Esquema elétrico","Multímetro","Fonte de bancada","Estação de ar quente"]
+  },
+  {
+    id:15, nome:"CPU com solda fria", device:"ambos", dificuldade:5,
+    sintomas:["Reinícios aleatórios, não liga de forma intermitente, falha aparece/desaparece com leve pressão na placa."],
+    causas:["Ciclos térmicos ao longo do tempo causando fadiga na solda BGA","Placa que sofreu queda ou impacto","Reparo anterior mal executado na região"],
+    passos:["Teste de flexão leve na área da CPU observando se o defeito muda","Inspeção térmica sob carga para ver ponto de aquecimento irregular","Reball completo da CPU seguindo perfil de temperatura correto","Testar antes de reinstalar tampa/blindagem"],
+    ferramentas:["Microscópio","Estação de ar quente","Kit de reballing"]
+  },
+  {
+    id:16, nome:"Memória UFS/eMMC corrompida", device:"ambos", dificuldade:5,
+    sintomas:["Bootloop, aparelho trava no logo, ou sistema não reconhece armazenamento."],
+    causas:["Falha física na memória por desgaste ou dano","Solda fria no chip de memória","Corrupção de firmware que não se resolve por software"],
+    passos:["Descartar corrupção de software com reflash completo antes de qualquer coisa","Verificar se aparelho é reconhecido em modo download/EDL","Se hardware confirmado, remover e testar chip em programador dedicado","Reballing e reinstalação, ou troca por chip compatível"],
+    ferramentas:["Programador de memória","Estação de ar quente","Kit de reballing"]
+  },
+  {
+    id:17, nome:"Face ID não funciona (pós-troca de tela)", device:"iphone", dificuldade:4,
+    sintomas:["Após troca de tela, Face ID para de funcionar mesmo com o módulo original reaproveitado."],
+    causas:["Módulo de Face ID (dot projector/flood illuminator) desparelhado do componente original","Cabo flex do Face ID danificado na troca","Componente de segurança pareado à placa original (dependendo do modelo)"],
+    passos:["Confirmar que o módulo de Face ID é o original do aparelho","Verificar se o flex foi reconectado corretamente e sem dobras","Em modelos com pareamento por microcontrolador, avaliar se é necessário serviço de transferência/programação especializado"],
+    ferramentas:["Microscópio","Ferramentas de precisão"]
+  },
+  {
+    id:18, nome:"True Tone perdido após troca de tela", device:"iphone", dificuldade:3,
+    sintomas:["Tela funciona normalmente após troca, mas opção de True Tone desaparece nos ajustes."],
+    causas:["Chip de calibração da tela original não foi transferido/programado para a tela nova","Uso de tela genérica sem suporte a True Tone"],
+    passos:["Verificar se a tela nova é compatível com transferência de chip de calibração","Realizar a programação/transferência do componente responsável pelo True Tone quando aplicável ao modelo","Informar o cliente sobre a limitação caso a tela usada não suporte o recurso"],
+    ferramentas:["Programador especializado","Microscópio"]
+  }
+];
+
+const listEl = document.getElementById('list');
+const chipsEl = document.getElementById('chips');
+const searchEl = document.getElementById('search');
+const emptyEl = document.getElementById('emptyState');
+const countLabel = document.getElementById('countLabel');
+
+document.getElementById('statTotal').textContent = FAULTS.length;
+
+const filters = [
+  {key:'todos', label:'Todos'},
+  {key:'android', label:'Android'},
+  {key:'iphone', label:'iPhone'},
+  {key:'ambos', label:'Ambos'},
+  {key:'entrada', label:'Entrada'},
+  {key:'molhado', label:'Molhado'},
+  {key:'formatacao', label:'Formatação'},
+  {key:'garantia', label:'Garantia'}
+];
+let activeFilter = 'todos';
+let openCards = new Set();
+
+function renderChips(){
+  chipsEl.innerHTML = '';
+  filters.forEach(f=>{
+    const c = document.createElement('div');
+    c.className = 'chip' + (activeFilter===f.key ? ' active' : '');
+    c.textContent = f.label;
+    c.onclick = ()=>{ activeFilter = f.key; renderChips(); render(); };
+    chipsEl.appendChild(c);
+  });
+}
+
+function meterHTML(level){
+  let html = '<div class="meter">';
+  for(let i=1;i<=5;i++){
+    const lit = i<=level;
+    const high = level>=4;
+    html += `<span class="${lit ? 'lit'+(high?' high':'') : ''}"></span>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function matchesSearch(f, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  const haystack = [f.nome, ...f.sintomas, ...f.causas, ...f.passos, ...f.ferramentas].join(' ').toLowerCase();
+  return haystack.includes(q);
+}
+
+function render(){
+  const q = searchEl.value.trim();
+
+  if(activeFilter === 'entrada'){
+    document.getElementById('statShown').textContent = '-';
+    document.getElementById('statFilter').textContent = filters.find(x=>x.key===activeFilter).label;
+    countLabel.textContent = `Procedimentos Padrão da Assistência`;
+    emptyEl.style.display = 'none';
+    
+    listEl.innerHTML = `
+      <div class="card open">
+        <div class="card-head" style="cursor:default">
+          <span class="tag ambos">Instrução</span>
+          <div class="card-title">ENTRADA NO APARELHO PARA MANUTENÇÃO</div>
+        </div>
+        <div class="card-body">
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li><strong style="color:var(--phosphor)">1º</strong> Identificar o problema, marca e modelo do aparelho e se abre pela tela ou não.</li>
+            <li><strong style="color:var(--phosphor)">2º</strong> verificar se realizamos o tipo de procedimento.</li>
+            <li><strong style="color:var(--phosphor)">3 –</strong> Sempre passar o orçamento pro cliente antes de realizar o serviço. (qualquer serviço).</li>
+            <li><strong style="color:var(--phosphor)">4 –</strong> Pedir o prazo de um dia, se deixou hoje será entregue amanhã a partir das 10h ou as 17h avaliar o cenário.</li>
+            <li><strong style="color:var(--phosphor)">5 –</strong> Fazer O.S e entregar a notinha para o cliente com as seguintes informações, garantia, se tem acessórios ou não, preço do serviço, data e enviar O.S com a foto do celular no grupo, foto frente verso e lados., sempre pegar um número pra contato, se não tiver entrega o cartão com número ou na própria notinha já tem, logo após pedir o cliente pra nos enviar msg mesmo que seja do número de um parente, caso o cliente não conseguir, beleza não tem outra opção.( por que precisamos fazer isso, imprevistos acontecem, um atraso na troca da peça, ou se ficar pronto antes, ou se não iremos ter a peça, ou precisamos de um prazo maior.. etc...</li>
+            <li><strong style="color:var(--phosphor)">6 –</strong> Pegar relatório do cliente: Celular chegou desligado, fazer as seguintes perguntas.<br><span style="padding-left:22px; display:block; color:var(--muted)">Há quanto tempo está parado, o que aconteceu, já levou em outra assistência, é de suma importância fazer essas perguntas para conseguirmos resolver melhor o problema do cliente.</span></li>
+            <li><strong style="color:var(--phosphor)">7 –</strong> Se for troca de tela fazer o teste no carregador pra ver se o celular está carregando, na entrada e na saída da manutenção.</li>
+            <li><strong style="color:var(--phosphor)">8 –</strong> Logo após o técnico mexer, as atendentes deverão retornar para o cliente de acordo com o prazo estabelecido (sem atrasos). Ou seja, ficarmos sempre atentos aos prazos.</li>
+            <li><strong style="color:var(--phosphor)">9 –</strong> Às vezes o cliente quer uma agilidade maior no serviço, quando for assim, efetuem uma ligação para o Jerry pra ver se será possível fazer a entrega no prazo ou se iremos ter a tela.</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if(activeFilter === 'molhado'){
+    document.getElementById('statShown').textContent = '-';
+    document.getElementById('statFilter').textContent = filters.find(x=>x.key===activeFilter).label;
+    countLabel.textContent = `Procedimentos Padrão da Assistência`;
+    emptyEl.style.display = 'none';
+    
+    listEl.innerHTML = `
+      <div class="card open">
+        <div class="card-head" style="cursor:default">
+          <span class="tag ambos">Instrução</span>
+          <div class="card-title">CELULAR CHEGOU MOLHADO</div>
+        </div>
+        <div class="card-body">
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Quando o celular chega molhado a instrução é a seguinte: primeiro será preciso avaliar o nível de oxidação, se está mais simples ou mais avançada, passar o valor da desoxidação pro cliente.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Depois as informações sobre os pós serviço: quando um celular molha infelizmente não conseguimos saber o que pode ter sido danificado, pode ter queimado a tela, um microfone, um alto falante, uma câmera ou a própria placa principal, e ainda pode acontecer do celular parar depois de um tempo mesmo que já tenha sido realizado o serviço, pois infelizmente o eletrônico não pode ter contato com água.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Já ocorreu de o celular parar duas semanas depois ou 1 ano depois de ser feito a manutenção. <strong style="color:var(--danger)">(desoxidação não tem garantia)</strong>.</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if(activeFilter === 'formatacao'){
+    document.getElementById('statShown').textContent = '-';
+    document.getElementById('statFilter').textContent = filters.find(x=>x.key===activeFilter).label;
+    countLabel.textContent = `Procedimentos Padrão da Assistência`;
+    emptyEl.style.display = 'none';
+    
+    listEl.innerHTML = `
+      <div class="card open">
+        <div class="card-head" style="cursor:default">
+          <span class="tag android">Android</span>
+          <div class="card-title">FORMATAÇÃO CELULAR ANDROID</div>
+        </div>
+        <div class="card-body">
+          <div class="sub" style="margin-bottom:12px; color:var(--text)">Existem dois tipos de formatação:</div>
+          <div class="section-label">PRIMEIRA:</div>
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">1 –</strong> A formatação pela configuração do celular. Antes de começamos a formatação é necessário irmos na configuração – contas – e remover todas as contas que contém no celular se não fizermos isso o celular irá bloquear na conta google, se isso acontecer será preciso quebrar a conta google através de sistema que é pago. <strong style="color:var(--danger)">(não pode acontecer isso, FICAREM ATENTOS. Custo 45,00 - Formatação)</strong><br><span style="color:var(--muted)">Observação: sempre remover Samsung account ou conta MI antes da conta google.</span></li>
+          </ul>
+          <div class="section-label">SEGUNDA:</div>
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">1 –</strong> Verificar com cliente se ele tem a senha principal do celular, se não tiver será preciso fazer a formatação para retirar a senha, com isso, o cliente irá perder todos os dados atuais que contém no mesmo.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">2 –</strong> Logo após se ele não tiver e-mail e senha da conta google será preciso quebrar a conta google se o celular bloquear na mesma.</li>
+          </ul>
+          <div class="sub" style="margin-top:12px; color:var(--text); padding:12px; background:var(--panel-2); border-left:3px solid var(--amber)">
+            <strong>Obss!!</strong> Acima foram citados dois serviços diferentes:<br>
+            <span style="color:var(--phosphor)">1º</span> Formatação simples pela configuração.<br>
+            <span style="color:var(--phosphor)">2º</span> Formatação com conta google caso o cliente não tenha a conta google.<br>
+            Passar o valor da formatação mais remoção de conta. Dois valores e dois serviços.
+          </div>
+        </div>
+      </div>
+
+      <div class="card open">
+        <div class="card-head" style="cursor:default">
+          <span class="tag iphone">iPhone</span>
+          <div class="card-title">FORMATAÇÃO CELULAR IPHONE</div>
+        </div>
+        <div class="card-body">
+          <div class="sub" style="margin-bottom:12px; color:var(--text)">Acontece a formatação de iphone quando o cliente não tem a senha principal.</div>
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Sendo assim o técnico irá passar um software que restaura o aparelho deixando-o como veio de fábrica, mas para executarmos esse serviço o cliente precisa ter o icloud. O que é icloud? É um tipo de conta que os aparelhos da apple exigem para que a gente possa utilizar as funções do mesmo. Ex: se não colocar icloud não será possível baixar qualquer app sequer na loja.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Contudo, se o cliente não tiver Icloud, não irá adiantar realizar a formatação, pois o celular irá voltar bloqueado no icloud contido no mesmo. Já aconteceu de alguns iphones não pedirem o icloud, coisa rara. O serviço ficará a critério do cliente, mas o mesmo precisa estar ciente do risco e custo do serviço.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">•</strong> Lembrando que só realizamos esse serviço quando o celular é realmente do cliente, ou ganhou, comprou, mas que seja licito e prove isso pra gente, (sempre avaliar o cenário).</li>
+          </ul>
+          <div class="sub" style="margin-top:12px; color:var(--danger); padding:12px; border:1px dashed var(--danger); text-align:center; font-size:16px; font-weight:700; letter-spacing:1px;">
+            NÃO REMOVEMOS ICLOUD
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if(activeFilter === 'garantia'){
+    document.getElementById('statShown').textContent = '-';
+    document.getElementById('statFilter').textContent = filters.find(x=>x.key===activeFilter).label;
+    countLabel.textContent = `Procedimentos Padrão da Assistência`;
+    emptyEl.style.display = 'none';
+    
+    listEl.innerHTML = `
+      <div class="card open">
+        <div class="card-head" style="cursor:default">
+          <span class="tag ambos">Instrução</span>
+          <div class="card-title">RETORNO SOBRE GARANTIA DE MANUTENÇÃO</div>
+        </div>
+        <div class="card-body">
+          <ul class="plain" style="list-style: none; padding-left: 0; line-height: 1.8;">
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">1 –</strong> Verificar se houve mau uso por parte do cliente, se houve a garantia não cobre, mas sempre temos que abordar o cliente e dar a notícia com máximo de cordialidade o possível, por exemplo o cliente trocou a tela e dentro dos três meses de garantia ele deixou quebrar, nesse caso a garantia não cobre, mas nem por isso iremos tratar o cliente mau, poderemos lhe oferecer a opção de trocar novamente e dar um desconto bom pra que ele não saia prejudicado pois uma troca de tela não é barato e entendemos que é ruim ter que tirar 200 ou 500 do bolso pra pagar novamente uma tela.</li>
+            <li style="margin-bottom:8px"><strong style="color:var(--phosphor)">2 –</strong> Se a tela do cliente não estiver quebrada, mas parou, o procedimento é o seguinte:<br><span style="padding-left:22px; display:block; color:var(--text)">Perguntar o cliente se houve queda, molhou, ou teve pancada ou etc. Iremos avaliar na hora na frente do cliente pra ver se há alguma avaria, se viu que não tem, será preciso falar pro cliente que ele precisa deixar pro técnico analisar e o prazo será de 2 dias pro retorno, exemplo: deixou hoje até as 16h, iremos entregar amanhã as 17h pegar um contato do cliente para recado (suma importância). Pois se ficar pronto antes avisaremos, e se precisaremos de um prazo maior caso a assistência não tenha a peça pra trocar na hora.</span></li>
+          </ul>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const filtered = FAULTS.filter(f=>{
+    const deviceMatch = activeFilter==='todos' || f.device===activeFilter || f.device==='ambos' && activeFilter!=='android' && activeFilter!=='iphone' ? true : f.device===activeFilter;
+    const okDevice = activeFilter==='todos' ? true : (f.device===activeFilter || f.device==='ambos');
+    return okDevice && matchesSearch(f, q);
+  });
+
+  document.getElementById('statShown').textContent = filtered.length;
+  document.getElementById('statFilter').textContent = filters.find(x=>x.key===activeFilter).label;
+  countLabel.textContent = `${filtered.length} de ${FAULTS.length} falhas exibidas`;
+
+  listEl.innerHTML = '';
+  emptyEl.style.display = filtered.length ? 'none' : 'block';
+
+  filtered.forEach(f=>{
+    const card = document.createElement('div');
+    card.className = 'card' + (openCards.has(f.id) ? ' open' : '');
+
+    const tagClass = f.device;
+    const tagLabel = f.device==='android' ? 'Android' : f.device==='iphone' ? 'iPhone' : 'Ambos';
+
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="tag ${tagClass}">${tagLabel}</span>
+        <div class="card-title">${f.nome}</div>
+        ${meterHTML(f.dificuldade)}
+        <span class="chevron">▶</span>
+      </div>
+      <div class="card-body">
+        <div class="section-label">Sintomas</div>
+        <ul class="plain">${f.sintomas.map(s=>`<li>${s}</li>`).join('')}</ul>
+        <div class="section-label warn">Causas prováveis</div>
+        <ul class="plain">${f.causas.map(s=>`<li>${s}</li>`).join('')}</ul>
+        <div class="section-label">Roteiro de diagnóstico</div>
+        <ol class="steps">${f.passos.map(s=>`<li>${s}</li>`).join('')}</ol>
+        <div class="section-label">Ferramentas</div>
+        <div class="tools">${f.ferramentas.map(t=>`<span class="tool-pill">${t}</span>`).join('')}</div>
+      </div>
+    `;
+
+    card.querySelector('.card-head').addEventListener('click', ()=>{
+      if(openCards.has(f.id)) openCards.delete(f.id);
+      else openCards.add(f.id);
+      render();
+    });
+
+    listEl.appendChild(card);
+  });
+}
+
+searchEl.addEventListener('input', render);
+renderChips();
+render();
+</script>
+</body>
+</html>
