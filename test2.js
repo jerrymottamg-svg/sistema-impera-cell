@@ -310,7 +310,6 @@
       qtd: parseFloat(p.qtd) || 0,
       minimo: parseFloat(p.min) || 0,
       custo: parseFloat(p.custo) || 0,
-      preco: parseFloat(p.preco) || 0,
       observacoes: p.obs || '',
     };
   }
@@ -480,6 +479,7 @@
       if (appVendConf && Array.isArray(appVendConf)) {
         appVendedores = appVendConf;
       }
+      const estoqueExtrasConf = await _sbGetConfig('estoque_extras') || {};
       console.log('🔍 [_initSupabase] Configuracoes carregadas');
 
       const supabaseHasData = ordensRows.length > 0 || lancRows.length > 0;
@@ -507,8 +507,22 @@
         caixas: caixasObj,
         nextId: seqVendas,
       };
+      const localEstoqueStr = localStorage.getItem('imperaCellEstoque');
+      const localEstoque = localEstoqueStr ? JSON.parse(localEstoqueStr) : {produtos:[]};
       _cache.estoque = {
-        produtos: estoqueRows.map(_rowToProd),
+        produtos: estoqueRows.map(row => {
+          let p = _rowToProd(row);
+          if (estoqueExtrasConf[p.id]) {
+            p.preco = estoqueExtrasConf[p.id].preco || 0;
+            p.barcode = estoqueExtrasConf[p.id].barcode || '';
+          }
+          let localP = (localEstoque.produtos || []).find(x => x.id === p.id);
+          if (localP) {
+            if (!p.preco && localP.preco !== undefined) p.preco = localP.preco;
+            if (!p.barcode && localP.barcode !== undefined) p.barcode = localP.barcode;
+          }
+          return p;
+        }),
         nextId: seqEstoque,
       };
       _cache.precos = precosConf || {};
@@ -653,6 +667,11 @@
       }
     }).catch(e => console.error('Sync estoque error:', e));
     _sbSetSeq('estoque', data.nextId).catch(e => console.error('Sync seq estoque error:', e));
+    const extras = {};
+    data.produtos.forEach(p => {
+      if (p.preco || p.barcode) extras[p.id] = { preco: p.preco, barcode: p.barcode };
+    });
+    if (Object.keys(extras).length > 0) _sbSetConfig('estoque_extras', extras).catch(e => console.error('Sync extras error:', e));
   }
 
   // ── Modelos base (atualizados até 2026) ──
@@ -2312,7 +2331,7 @@
   }
 
   function salvarProduto() {
-    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.editEstoque)) {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.viewEstoque)) {
       toast('❌ Você não tem permissão para alterar o Estoque.', true);
       return;
     }
@@ -2343,6 +2362,10 @@
   }
 
   function ajustarQtd(id, delta) {
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.viewEstoque)) {
+      toast('❌ Você não tem permissão para alterar o Estoque.', true);
+      return;
+    }
     const d = getEstoque();
     const p = d.produtos.find(x => x.id === id);
     if (!p) return;
@@ -2351,12 +2374,50 @@
     renderEstoque();
   }
 
+  function editarCampoEstoque(id, campo) {
+    const canEdit = currentUser?.role === 'admin' || (currentUser?.perms && currentUser.perms.viewEstoque);
+    if (!canEdit) {
+      toast('❌ Você não tem permissão para alterar.', true);
+      return;
+    }
+    if (campo === 'custo' && currentUser?.role !== 'admin') {
+      toast('❌ Apenas administradores podem alterar custos.', true);
+      return;
+    }
+
+    const d = getEstoque();
+    const p = d.produtos.find(x => x.id === id);
+    if (!p) return;
+
+    let novoValor;
+    if (campo === 'min') {
+      novoValor = prompt(`[${p.nome}]\nEstoque Mínimo:`, p.min);
+      if (novoValor !== null) p.min = parseFloat(novoValor) || 0;
+    } else if (campo === 'custo') {
+      novoValor = prompt(`[${p.nome}]\nCusto Unitário (R$):`, p.custo);
+      if (novoValor !== null) p.custo = parseFloat(novoValor.replace(',','.')) || 0;
+    } else if (campo === 'preco') {
+      novoValor = prompt(`[${p.nome}]\nPreço de Venda (R$):`, p.preco);
+      if (novoValor !== null) p.preco = parseFloat(novoValor.replace(',','.')) || 0;
+    } else if (campo === 'barcode') {
+      novoValor = prompt(`[${p.nome}]\nCódigo de Barras:`, p.barcode || '');
+      if (novoValor !== null) p.barcode = novoValor.trim();
+    }
+    
+    if (novoValor !== null) {
+      saveEstoque(d);
+      renderEstoque();
+      toast('Alterado com sucesso!');
+    }
+  }
+
   function excluirProduto(id) {
-    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
+    if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.viewEstoque)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir este produto?')) return;
     const d = getEstoque();
     d.produtos = d.produtos.filter(x => x.id !== id);
     saveEstoque(d);
+    if (_useSupabase) _sbDelete('estoque', id);
     renderEstoque();
     toast('Produto excluído.');
   }
@@ -2366,7 +2427,7 @@
     const search = (document.getElementById('searchEstoque')?.value || '').toLowerCase();
     const cat = document.getElementById('filterCategoria')?.value || '';
     let lista = d.produtos;
-    if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search) || (p.barcode && p.barcode.includes(search)));
+    if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search) || (p.barcode && p.barcode.toLowerCase().includes(search)));
     if (cat) lista = lista.filter(p => p.categoria === cat);
     
     let custoTotal = 0;
@@ -2379,23 +2440,29 @@
     
     const stats = document.getElementById('estoqueStats');
     if (stats) {
-      stats.innerHTML = `
-        <div class="stat-card" style="border-color:var(--danger)">
-          <span class="stat-label">📉 Custo Total (Investido)</span>
-          <span class="stat-value red">${formatMoney(custoTotal)}</span>
-          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Soma do custo de todas as peças</span>
-        </div>
-        <div class="stat-card" style="border-color:var(--success)">
-          <span class="stat-label">📈 Valor Total de Venda</span>
-          <span class="stat-value green">${formatMoney(vendaTotal)}</span>
-          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Faturamento potencial esperado</span>
-        </div>
-        <div class="stat-card" style="border-color:var(--gold)">
-          <span class="stat-label">💰 Lucro Bruto Estimado</span>
-          <span class="stat-value gold">${formatMoney(vendaTotal - custoTotal)}</span>
-          <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Vendas − Custos</span>
-        </div>
-      `;
+      if (currentUser?.role === 'admin') {
+        stats.innerHTML = `
+          <div class="stat-card" style="border-color:var(--danger)">
+            <span class="stat-label">📉 Custo Total (Investido)</span>
+            <span class="stat-value red">${formatMoney(custoTotal)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Soma do custo de todas as peças</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--gold)">
+            <span class="stat-label">📈 Valor Total de Venda</span>
+            <span class="stat-value gold">${formatMoney(vendaTotal)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Faturamento potencial esperado</span>
+          </div>
+          <div class="stat-card" style="border-color:var(--success)">
+            <span class="stat-label">💰 Lucro Bruto Estimado</span>
+            <span class="stat-value green">${formatMoney(vendaTotal - custoTotal)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-top:2px">Vendas − Custos</span>
+          </div>
+        `;
+        stats.style.display = 'grid';
+      } else {
+        stats.innerHTML = '';
+        stats.style.display = 'none';
+      }
     }
 
     const tbody = document.getElementById('estoqueBody');
@@ -2408,7 +2475,7 @@
         : baixo
           ? `<span class="badge badge-aguardando">Baixo</span>`
           : `<span class="badge badge-concluido">OK</span>`;
-      const canEdit = currentUser?.role === 'admin' || (currentUser?.perms && currentUser.perms.editEstoque);
+      const canEdit = currentUser?.role === 'admin' || (currentUser?.perms && currentUser.perms.viewEstoque);
       
       const qtdControls = canEdit 
         ? `<div style="display:flex;align-items:center;gap:6px">
@@ -2432,12 +2499,23 @@
         <td>${p.nome}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${p.obs}</div>` : ''}</td>
         <td>${p.categoria}</td>
         <td>${qtdControls}</td>
-        <td>${p.min}</td>
-        <td>${currentUser?.role === 'admin' ? (p.custo > 0 ? formatMoney(p.custo) : '—') : '***'}</td>
+        <td style="cursor:pointer" onclick="editarCampoEstoque(${p.id}, 'min')" title="Editar Mínimo">${p.min} <span style="font-size:10px;opacity:0.5">✏️</span></td>
+        <td style="cursor:${currentUser?.role === 'admin' ? 'pointer' : 'default'}" ${currentUser?.role === 'admin' ? `onclick="editarCampoEstoque(${p.id}, 'custo')" title="Editar Custo"` : ''}>
+          ${currentUser?.role === 'admin' ? ((p.custo > 0 ? formatMoney(p.custo) : '—') + ' <span style="font-size:10px;opacity:0.5">✏️</span>') : '***'}
+        </td>
+        <td style="cursor:pointer" onclick="editarCampoEstoque(${p.id}, 'preco')" title="Editar Preço">
+          ${p.preco > 0 ? formatMoney(p.preco) : '—'} <span style="font-size:10px;opacity:0.5">✏️</span>
+        </td>
+        <td style="color:var(--success)">
+          ${currentUser?.role === 'admin' ? ((p.preco - (p.custo || 0)) > 0 ? formatMoney(p.preco - (p.custo || 0)) : '—') : '***'}
+        </td>
+        <td style="cursor:pointer;font-family:monospace" onclick="editarCampoEstoque(${p.id}, 'barcode')" title="Editar Código">
+          ${p.barcode || '—'} <span style="font-size:10px;opacity:0.5">✏️</span>
+        </td>
         <td>${badge}</td>
         <td>${acoesHtml}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum produto. Clique em "+ Novo Produto" para começar.</td></tr>';
+    }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum produto. Clique em "+ Novo Produto" para começar.</td></tr>';
   }
 
   function imprimirEtiquetaProduto(id) {
@@ -2447,25 +2525,43 @@
     
     const code = p.barcode || ('PRD' + String(p.id).padStart(5, '0'));
     
+    let qtd = prompt(`Quantas etiquetas do produto "${p.nome}" deseja imprimir nesta folha?`, "1");
+    if (qtd === null) return; // usuário cancelou
+    qtd = parseInt(qtd);
+    if (isNaN(qtd) || qtd <= 0) qtd = 1;
+    if (qtd > 200) qtd = 200; // Limite de segurança
+    
     const printArea = document.getElementById('printArea');
-    printArea.innerHTML = `
-      <div style="width: 50mm; text-align: center; font-family: sans-serif; padding: 10px;">
-        <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nome}</div>
-        <svg id="barcode-svg"></svg>
-        <div style="font-size: 10px; margin-top: 5px;">${p.categoria} ${p.custo > 0 ? '— Custo: R$ ' + p.custo.toFixed(2).replace('.',',') : ''}</div>
-      </div>
-    `;
+    let html = '<div style="display: flex !important; flex-wrap: wrap !important; gap: 0; justify-content: flex-start; align-content: flex-start; padding: 0; width: 100%; box-sizing: border-box;">';
+    
+    const precoFormatado = p.preco > 0 ? 'R$ ' + p.preco.toFixed(2).replace('.', ',') : '';
+    
+    for (let i = 0; i < qtd; i++) {
+      html += `
+        <div style="display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; width: 38mm; height: 17.5mm; text-align: center; font-family: sans-serif; padding: 2px; border: 1px dashed #ddd; box-sizing: border-box; page-break-inside: avoid; overflow: hidden;">
+          <div style="display: block !important; font-weight: bold; font-size: 8px; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${p.nome}">${p.nome}</div>
+          <svg id="barcode-svg-${i}" style="display: block !important; max-width: 100%; height: 11px; margin: 0;"></svg>
+          <div style="display: flex !important; justify-content: space-between !important; width: 85%; font-size: 7px; font-weight: bold; margin-top: 1px;">
+            <span>${precoFormatado}</span>
+            <span>${code}</span>
+          </div>
+        </div>
+      `;
+    }
+    html += '</div>';
+    printArea.innerHTML = html;
     
     try {
-      JsBarcode("#barcode-svg", code, {
-        format: "CODE128",
-        width: 1.5,
-        height: 40,
-        displayValue: true,
-        fontSize: 12,
-        margin: 0
-      });
-      window.print();
+      for (let i = 0; i < qtd; i++) {
+        JsBarcode(`#barcode-svg-${i}`, code, {
+          format: "CODE128",
+          width: 1.2,
+          height: 25,
+          displayValue: false,
+          margin: 0
+        });
+      }
+      setTimeout(() => window.print(), 200);
     } catch (e) {
       toast('❌ Erro ao gerar código de barras: ' + e.message, true);
     }
@@ -2724,7 +2820,30 @@
     const formaPagamento = document.getElementById('vendaFormaPagamento').value;
     const data = document.getElementById('vendaData').value;
     const editId = document.getElementById('vendaEditId').value;
+    const produtoId = parseInt(document.getElementById('vendaProdutoId').value);
+    const estoque = getEstoque();
+    const normalizeStr = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    let prod = estoque.produtos.find(p => String(p.id) === String(produtoId));
+    if (!prod && descricao) {
+      prod = estoque.produtos.find(p => normalizeStr(p.nome) === normalizeStr(descricao));
+      if (!prod) {
+        prod = estoque.produtos.find(p => normalizeStr(p.nome).includes(normalizeStr(descricao)) || normalizeStr(descricao).includes(normalizeStr(p.nome)));
+      }
+    }
+    
+    const parseSafe = (val) => {
+        let s = String(val || '').replace(/[^0-9,\.-]/g, '');
+        if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else s = s.replace(',', '.');
+        return parseFloat(s) || 0;
+    };
+    
+    const custoUnitario = prod ? parseSafe(prod.custo) : 0;
+    const custoTotal = custoUnitario * quantidade;
 
+    const totalItem = (preco * quantidade) - desconto;
+    
     const isDiv = document.getElementById('vendaPagamentoDividido').checked;
 
     if (!descricao || !data || isNaN(preco) || preco <= 0 || isNaN(quantidade) || quantidade <= 0) {
@@ -3411,9 +3530,9 @@
 
     // ── Lançamentos automáticos: apenas Vendas (OS entram via confirmação de pagamento) ──
     const dv = getVendas();
-    const lancamentosVendas = dv.vendas.map(v => {
+    const lancamentosVendas = dv.vendas.flatMap(v => {
       if (v.isRetirada) {
-        return {
+        return [{
           id: 'venda-' + v.id,
           data: v.data,
           desc: `Sangria — ${v.descricao}`,
@@ -3422,20 +3541,26 @@
           valor: parseFloat(v.total)||0,
           formaPagamento: v.formaPagamento,
           automatico: true,
-        };
+        }];
       }
-      return {
+      
+      const cTotal = parseFloat(v.custoTotal) || parseFloat(v.custo) || 0;
+      
+      const arr = [{
         id: 'venda-' + v.id,
         data: v.data,
         desc: `Venda — ${v.descricao}`,
         categoria: 'Venda de Produto',
         tipo: 'entrada',
         valor: parseFloat(v.total)||0,
+        custo: cTotal,
         formaPagamento: v.formaPagamento,
         automatico: true,
         status: 'pago',
         dataVencimento: v.data
-      };
+      }];
+      
+      return arr;
     });
 
     // ── Juntar tudo ──
@@ -3767,7 +3892,7 @@
       categoria: v.isRetirada ? 'Sangria de Caixa' : 'Venda de Produto',
       tipo: v.isRetirada ? 'saida' : 'entrada',
       valor: parseFloat(v.total)||0,
-      custo: parseFloat(v.custo)||0, // vendas nao tem custo nativo na forma antiga, entao 0
+      custo: parseFloat(v.custoTotal)||parseFloat(v.custo)||0,
       status: v.status || 'pago'
      }))].map(l => {
          let iso = l.data || '';
@@ -3835,7 +3960,7 @@
      <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
      
      <div style="display:flex;justify-content:space-between;color:var(--text)"><span>2. CUSTOS DIRETOS (CMV/CSV)</span> <strong class="red">− ${formatMoney(custoServicos + custoPecas)}</strong></div>
-     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Custo de Peças Aplicadas (OS)</span> <span>${formatMoney(custoServicos)}</span></div>
+     <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Custo de Peças (OS) e Produtos Vendidos</span> <span>${formatMoney(custoServicos)}</span></div>
      <div style="display:flex;justify-content:space-between;padding-left:16px;color:var(--text-muted)"><span>Compra de Estoque/Peças</span> <span>${formatMoney(custoPecas)}</span></div>
      
      <div style="margin:8px 0;border-bottom:1px solid var(--border)"></div>
