@@ -7372,8 +7372,10 @@
   // --- Categorias Dinâmicas do Estoque ---
   function carregarCategoriasEstoque() {
     const defaultCats = ['Telas', 'Baterias', 'Conectores', 'Películas', 'Acessórios', 'Ferramentas', 'Outros'];
-    const customCats = JSON.parse(localStorage.getItem('ESTOQUE_CATEGORIAS') || '[]');
-    const todasCats = [...new Set([...defaultCats, ...customCats])];
+    const est = typeof getEstoque === 'function' ? getEstoque() : {produtos: []};
+    const customCats = est.categorias || [];
+    const prodCats = (est.produtos || []).map(p => p.categoria).filter(c => c && c.trim() !== '');
+    const todasCats = [...new Set([...defaultCats, ...customCats, ...prodCats])];
     
     const selects = [document.getElementById('prodCategoria'), document.getElementById('filterCategoria')];
     selects.forEach(sel => {
@@ -7396,10 +7398,11 @@
     if (sel.value === '__nova__') {
       const nova = prompt('Digite o nome da nova categoria:');
       if (nova && nova.trim()) {
-        const customCats = JSON.parse(localStorage.getItem('ESTOQUE_CATEGORIAS') || '[]');
-        if (!customCats.includes(nova.trim())) {
-          customCats.push(nova.trim());
-          localStorage.setItem('ESTOQUE_CATEGORIAS', JSON.stringify(customCats));
+        const est = typeof getEstoque === 'function' ? getEstoque() : {};
+        if (!est.categorias) est.categorias = [];
+        if (!est.categorias.includes(nova.trim())) {
+          est.categorias.push(nova.trim());
+          if (typeof saveEstoque === 'function') saveEstoque(est);
         }
         carregarCategoriasEstoque();
         sel.value = nova.trim();
