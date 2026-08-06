@@ -7382,12 +7382,13 @@
       if (!sel) return;
       const isFilter = sel.id === 'filterCategoria';
       const selected = sel.value;
-      sel.innerHTML = isFilter ? '<option value="">Todas as categorias</option>' : '<option value="" disabled selected>Selecione a categoria...</option>';
+      let htmlOptions = isFilter ? '<option value="">Todas as categorias</option>' : '<option value="" disabled selected>Selecione a categoria...</option>';
+      htmlOptions += '<option value="__nova__" style="color:var(--primary);font-weight:bold">+ Nova Categoria...</option>';
+      htmlOptions += '<option value="__manage__" style="color:#f39c12;font-weight:bold">⚙️ Gerenciar Categorias...</option>';
       todasCats.forEach(c => {
-        sel.innerHTML += `<option value="${c}">${c}</option>`;
+        htmlOptions += `<option value="${c}">${c}</option>`;
       });
-      sel.innerHTML += '<option value="__nova__" style="color:var(--primary);font-weight:bold">+ Nova Categoria...</option>';
-      sel.innerHTML += '<option value="__manage__" style="color:#f39c12;font-weight:bold">⚙️ Gerenciar Categorias...</option>';
+      sel.innerHTML = htmlOptions;
       if (selected && (todasCats.includes(selected) || selected === '')) {
         sel.value = selected;
       }
