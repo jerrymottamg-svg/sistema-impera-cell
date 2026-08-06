@@ -5056,6 +5056,26 @@
     if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { toast('❌ Você não tem permissão para excluir registros.', true); return; }
     if (!confirm('Excluir esta venda?')) return;
     const d = getVendas();
+    const vendaToDelete = d.vendas.find(x => x.id === id);
+    
+    if (vendaToDelete && vendaToDelete.cartItems && !vendaToDelete.isRetirada) {
+      const est = getEstoque();
+      let changedEst = false;
+      vendaToDelete.cartItems.forEach(item => {
+        if (item.produtoId) {
+          const prod = est.produtos.find(x => x.id === Number(item.produtoId));
+          if (prod) {
+            prod.qtd = (prod.qtd || 0) + item.quantidade;
+            changedEst = true;
+          }
+        }
+      });
+      if (changedEst) {
+        saveEstoque(est);
+        if (typeof renderEstoque === 'function') renderEstoque();
+      }
+    }
+    
     d.vendas = d.vendas.filter(x => x.id !== id);
     saveVendas(d);
     renderVendas();
