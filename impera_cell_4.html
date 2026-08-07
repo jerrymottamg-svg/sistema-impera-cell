@@ -4344,7 +4344,18 @@
     }
     const nome = document.getElementById('prodNome').value.trim();
     if (!nome) { toast('Informe o nome do produto.', true); return; }
+    
+    const barcode = document.getElementById('prodBarcode').value.trim();
     const d = getEstoque();
+    
+    if (barcode) {
+      const duplicado = d.produtos.find(x => x.barcode === barcode && x.id !== prodEditId);
+      if (duplicado) {
+        toast('❌ Erro: Este código de barras já está cadastrado em outro produto!', true);
+        return;
+      }
+    }
+
     const p = {
       nome,
       categoria: document.getElementById('prodCategoria').value,
@@ -4353,7 +4364,7 @@
       custo: parseFloat(document.getElementById('prodCusto').value) || 0,
       preco: parseFloat(document.getElementById('prodPreco').value) || 0,
       obs: document.getElementById('prodObs').value.trim(),
-      barcode: document.getElementById('prodBarcode').value.trim(),
+      barcode: barcode,
     };
     if (prodEditId) {
       const idx = d.produtos.findIndex(x => x.id === prodEditId);
