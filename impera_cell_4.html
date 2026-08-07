@@ -9157,12 +9157,7 @@
     const container = document.getElementById('listaCategoriasGerenciar');
     let html = '';
     
-    
-
-    );
-    }
-
-    \n    html += '<h4 style="margin: 5px 0; color: var(--primary); font-size: 12px; text-transform: uppercase;">Personalizadas</h4>';
+    html += '<h4 style="margin: 5px 0; color: var(--primary); font-size: 12px; text-transform: uppercase;">Personalizadas</h4>';
     
     if (todasPersonalizadas.length === 0) {
       html += '<p style="font-size: 13px; color: #888; text-align: center; padding: 10px;">Nenhuma categoria personalizada criada.</p>';
@@ -9175,13 +9170,18 @@
             <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="excluirCategoria('${c}')">🗑️</button>
           </div>
         </div>`;
-      }\n\n    html += '<h4 style="margin: 15px 0; color: #888; font-size: 12px; text-transform: uppercase;">Padrão do Sistema (Somente leitura)</h4>';
+      });
+    }
+
+    html += '<h4 style="margin: 15px 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase;">Padrão do Sistema (Somente leitura)</h4>';
     defaultCats.forEach(c => {
       html += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px; border-bottom: 1px solid var(--border); color: #888;">
         <span>${c}</span>
         <span style="font-size: 11px;">(Padrão)</span>
       </div>`;
-    });\n\n    container.innerHTML = html;
+    });
+
+    container.innerHTML = html;
     document.getElementById('modalCategorias').classList.add('open');
   }
 
