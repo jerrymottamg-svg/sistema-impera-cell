@@ -1132,7 +1132,18 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Produto</th><th>Categoria</th><th>Qtd.</th><th>Mín.</th><th>Custo Unit.</th><th>Preço Venda</th><th>Lucro</th><th>Cód. Barras</th><th>Status</th><th>Ações</th></tr></thead>
+          <thead><tr>
+            <th onclick="sortEstoque('nome')" style="cursor:pointer; user-select:none;">Produto ↕️</th>
+            <th onclick="sortEstoque('categoria')" style="cursor:pointer; user-select:none;">Categoria ↕️</th>
+            <th onclick="sortEstoque('qtd')" style="cursor:pointer; user-select:none;">Qtd. ↕️</th>
+            <th onclick="sortEstoque('min')" style="cursor:pointer; user-select:none;">Mín. ↕️</th>
+            <th onclick="sortEstoque('custo')" style="cursor:pointer; user-select:none;">Custo Unit. ↕️</th>
+            <th onclick="sortEstoque('preco')" style="cursor:pointer; user-select:none;">Preço Venda ↕️</th>
+            <th>Lucro</th>
+            <th onclick="sortEstoque('barcode')" style="cursor:pointer; user-select:none;">Cód. Barras ↕️</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr></thead>
           <tbody id="estoqueBody"></tbody>
         </table>
       </div>
@@ -4440,6 +4451,20 @@
     toast('Produto excluído.');
   }
 
+  
+  let estoqueSortCol = 'nome';
+  let estoqueSortDir = 1;
+
+  function sortEstoque(col) {
+    if (estoqueSortCol === col) {
+      estoqueSortDir *= -1;
+    } else {
+      estoqueSortCol = col;
+      estoqueSortDir = 1;
+    }
+    renderEstoque();
+  }
+
   function renderEstoque() {
     const d = getEstoque();
     const search = (document.getElementById('searchEstoque')?.value || '').toLowerCase();
@@ -4447,6 +4472,16 @@
     let lista = d.produtos;
     if (search) lista = lista.filter(p => p.nome.toLowerCase().includes(search) || (p.barcode && p.barcode.toLowerCase().includes(search)));
     if (cat) lista = lista.filter(p => p.categoria === cat);
+
+    lista.sort((a, b) => {
+      let valA = a[estoqueSortCol] !== undefined ? a[estoqueSortCol] : '';
+      let valB = b[estoqueSortCol] !== undefined ? b[estoqueSortCol] : '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return -1 * estoqueSortDir;
+      if (valA > valB) return 1 * estoqueSortDir;
+      return 0;
+    });
     
     let custoTotal = 0;
     let vendaTotal = 0;
