@@ -1135,6 +1135,7 @@
           <thead><tr>
             <th onclick="sortEstoque('nome')" style="cursor:pointer; user-select:none;">Produto ↕️</th>
             <th onclick="sortEstoque('categoria')" style="cursor:pointer; user-select:none;">Categoria ↕️</th>
+            <th onclick="sortEstoque('localizacao')" style="cursor:pointer; user-select:none;">Localização ↕️</th>
             <th onclick="sortEstoque('qtd')" style="cursor:pointer; user-select:none;">Qtd. ↕️</th>
             <th onclick="sortEstoque('min')" style="cursor:pointer; user-select:none;">Mín. ↕️</th>
             <th onclick="sortEstoque('custo')" style="cursor:pointer; user-select:none;">Custo Unit. ↕️</th>
@@ -1465,7 +1466,23 @@
   .tabela-empty { text-align: center; padding: 32px; color: var(--text-muted); font-size: 14px; }
 </style>
 
-<!-- ─── MODAL PRODUTO ─── -->
+<!-- ⚙️ MODAL LOCALIZACOES ⚙️ -->
+<div class="modal-overlay" id="modalLocalizacoes" style="z-index: 10002;">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Gerenciar Localizações</h3>
+      <button class="modal-close" onclick="closeModal('modalLocalizacoes')">✕</button>
+    </div>
+    <div style="margin-bottom:12px; display:flex; gap:8px;">
+      <input type="text" id="novaLocalizacaoInput" placeholder="Nova localização..." style="flex:1;" onkeydown="if(event.key==='Enter') addLocalizacao()" />
+      <button class="btn btn-primary" onclick="addLocalizacao()">Adicionar</button>
+    </div>
+    <div id="listaLocalizacoes" style="max-height: 300px; overflow-y: auto; display:flex; flex-direction:column; gap:4px;">
+    </div>
+  </div>
+</div>
+
+<!-- 📦 MODAL PRODUTO 📦 -->
 <div class="modal-overlay" id="modalProduto">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
@@ -1473,10 +1490,15 @@
       <button class="modal-close" onclick="closeModal('modalProduto')">✕</button>
     </div>
     <div class="form-grid" style="margin-bottom:16px">
-      <div class="form-group full"><label>Código de Barras (opcional)</label><input type="text" id="prodBarcode" placeholder="Bipar ou digitar código..." /></div>
+      <div class="form-group full"><label>Código de Barras (opcional)</label><input type="text" id="prodBarcode" placeholder="Bipar ou digitar código..." onkeydown="handleProdBarcodeScan(event)" /></div>
       <div class="form-group full"><label>Nome do Produto *</label><input type="text" id="prodNome" placeholder="Ex: Tela Samsung A54" /></div>
       <div class="form-group"><label>Categoria</label>
         <select id="prodCategoria"><option value="" disabled selected>Selecione a categoria...</option><option>Telas</option><option>Baterias</option><option>Conectores</option><option>Películas</option><option>Acessórios</option><option>Ferramentas</option><option>Outros</option></select>
+      </div>
+      <div class="form-group full"><label>Localização (ex: Gaveta, Prateleira)</label>
+        <select id="prodLocalizacao" onchange="handleLocalizacaoChange(event)">
+          <option value="" disabled selected>Selecione a localização...</option>
+        </select>
       </div>
       <div class="form-group"><label>Quantidade</label><input type="number" id="prodQtd" placeholder="0" min="0" value="0" /></div>
       <div class="form-group"><label>Qtd. Mínima (alerta)</label><input type="number" id="prodMin" placeholder="3" min="0" value="3" /></div>
@@ -2444,6 +2466,10 @@
       const precosConf = await _sbGetConfig('precos');
       const modelosConf = await _sbGetConfig('modelos');
       const renomesConf = await _sbGetConfig('renomes');
+      const locaisConf = await _sbGetConfig('localizacoes');
+      if (locaisConf && Array.isArray(locaisConf)) {
+        _cache.localizacoes = locaisConf;
+      }
       const compatConf = await _sbGetConfig('compatibilidades');
       if (compatConf && Array.isArray(compatConf)) {
         _cache.compatibilidades = compatConf;
@@ -2579,6 +2605,11 @@
       const localRenomes = (_useSupabase && _cache._loaded ? JSON.parse(JSON.stringify(_cache.renomes)) : JSON.parse(localStorage.getItem('imperaCellRenomesModelo') || '{}'));
       if (Object.keys(localRenomes).length > 0) {
         await _sbSetConfig('renomes', localRenomes);
+      }
+
+      const localLocais = JSON.parse(localStorage.getItem('imperaCellLocalizacoes'));
+      if (localLocais && Array.isArray(localLocais)) {
+        await _sbSetConfig('localizacoes', localLocais);
       }
 
       console.log('✅ Migração concluída!');
@@ -2999,6 +3030,7 @@
             await _sbSetConfig('precos', _cache.precos);
             await _sbSetConfig('modelos', _cache.modelos);
             await _sbSetConfig('renomes', _cache.renomes);
+            if (_cache.localizacoes) await _sbSetConfig('localizacoes', _cache.localizacoes);
           } else {
             // Local fallback
             localStorage.setItem(DB_KEY, JSON.stringify(data.ordens));
@@ -4316,10 +4348,149 @@
     }
   }
 
+  function handleProdBarcodeScan(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const barcode = e.target.value.trim();
+      if (!barcode) return;
+      
+      const d = getEstoque();
+      const p = d.produtos.find(x => x.barcode === barcode);
+      if (p) {
+        toast('Produto encontrado! Carregando dados do estoque...');
+        abrirModalProduto(p.id);
+      } else {
+        toast('Código lido, produto novo.');
+      }
+    }
+  }
+
+  const LOCAIS_KEY = 'imperaCellLocalizacoes';
+
+  function getLocalizacoes() {
+    if (_useSupabase && _cache._loaded && _cache.localizacoes) {
+      return JSON.parse(JSON.stringify(_cache.localizacoes));
+    }
+    try { 
+      const res = JSON.parse(localStorage.getItem(LOCAIS_KEY));
+      return res !== null ? res : ['Gaveta 1','Gaveta 2','Gaveta 3','Gaveta 4','Gaveta 5','Prateleira A','Prateleira B','Prateleira C','Vitrine','Estoque Externo','Outra'];
+    }
+    catch { return ['Gaveta 1','Gaveta 2','Gaveta 3','Gaveta 4','Gaveta 5','Prateleira A','Prateleira B','Prateleira C','Vitrine','Estoque Externo','Outra']; }
+  }
+
+  function salvarLocalizacoes(lista) {
+    localStorage.setItem(LOCAIS_KEY, JSON.stringify(lista));
+    if (_useSupabase && _cache._loaded) {
+      _cache.localizacoes = JSON.parse(JSON.stringify(lista));
+      _sbSetConfig('localizacoes', lista).catch(e => console.error('Erro sync locais:', e));
+    }
+  }
+
+  function atualizarSelectLocalizacao() {
+    const select = document.getElementById('prodLocalizacao');
+    if (!select) return;
+    const atual = select.value;
+    const lista = getLocalizacoes();
+    let htmlOptions = '<option value="" disabled selected>Selecione a localização...</option>';
+    htmlOptions += '<option value="__nova__" style="color:var(--primary);font-weight:bold">+ Nova Localização...</option>';
+    htmlOptions += '<option value="__manage__" style="color:#f39c12;font-weight:bold">⚙️ Gerenciar Localizações...</option>';
+    
+    lista.forEach(loc => {
+      htmlOptions += `<option value="${loc}">${loc}</option>`;
+    });
+    
+    select.innerHTML = htmlOptions;
+    if (atual && (lista.includes(atual) || atual === '')) {
+      select.value = atual;
+    }
+  }
+
+  function handleLocalizacaoChange(e) {
+    const sel = e.target;
+    if (sel.value === '__manage__') {
+      sel.value = ''; // reseta
+      abrirModalLocalizacoes();
+    } else if (sel.value === '__nova__') {
+      const nova = prompt('Digite o nome da nova localização:');
+      if (nova && nova.trim()) {
+        const nome = nova.trim();
+        let lista = getLocalizacoes();
+        if (!lista.includes(nome)) {
+          lista.push(nome);
+          salvarLocalizacoes(lista);
+          atualizarSelectLocalizacao();
+        }
+        sel.value = nome;
+      } else {
+        sel.value = '';
+      }
+    }
+  }
+
+  function abrirModalLocalizacoes() {
+    renderizarLocalizacoes();
+    document.getElementById('modalLocalizacoes').classList.add('open');
+  }
+
+  function renderizarLocalizacoes() {
+    const locs = getLocalizacoes();
+    
+    const container = document.getElementById('listaLocalizacoes');
+    let html = '';
+    
+    if (locs.length === 0) {
+      html += '<p style="font-size: 13px; color: #888; text-align: center; padding: 10px;">Nenhuma localização criada.</p>';
+    } else {
+      locs.sort().forEach(c => {
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px; border-bottom: 1px solid var(--border);">
+          <span>${c}</span>
+          <div>
+            <button class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 12px; margin-right: 4px;" onclick="editarLocalizacao('${c}')">✏️</button>
+            <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="removerLocalizacao('${c}')">🗑️</button>
+          </div>
+        </div>`;
+      });
+    }
+
+    container.innerHTML = html;
+  }
+  
+  function editarLocalizacao(oldName) {
+    const newName = prompt('Novo nome para a localização "' + oldName + '":', oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    
+    const nome = newName.trim();
+    let lista = getLocalizacoes();
+    const idx = lista.indexOf(oldName);
+    if (idx !== -1) {
+      lista[idx] = nome;
+      salvarLocalizacoes(lista);
+      renderizarLocalizacoes();
+      atualizarSelectLocalizacao();
+      toast('Localização editada!');
+    }
+  }
+
+  function removerLocalizacao(nome) {
+    if (confirm(`Tem certeza que deseja excluir a localização "${nome}"?`)) {
+      let lista = getLocalizacoes();
+      const idx = lista.indexOf(nome);
+      if (idx !== -1) {
+        lista.splice(idx, 1);
+        salvarLocalizacoes(lista);
+        renderizarLocalizacoes();
+        atualizarSelectLocalizacao();
+        toast('Localização excluída!');
+      }
+    }
+  }
+
   function abrirModalProduto(id) {
     prodEditId = id || null;
     const titulo = document.getElementById('modalProdutoTitle');
     
+    atualizarSelectLocalizacao();
+
     const adminOnly = document.getElementById('modalProduto').querySelectorAll('.fin-admin-only');
     const isAdmin = currentUser?.role === 'admin';
     adminOnly.forEach(el => el.style.display = isAdmin ? '' : 'none');
@@ -4337,9 +4508,10 @@
       document.getElementById('prodPreco').value = p.preco || 0;
       document.getElementById('prodObs').value = p.obs || '';
       document.getElementById('prodBarcode').value = p.barcode || '';
+      document.getElementById('prodLocalizacao').value = p.localizacao || '';
     } else {
       titulo.textContent = 'Novo Produto';
-      ['prodNome','prodObs','prodBarcode'].forEach(id => document.getElementById(id).value = '');
+      ['prodNome','prodObs','prodBarcode','prodLocalizacao'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('prodQtd').value = 0;
       document.getElementById('prodMin').value = 3;
       document.getElementById('prodCusto').value = 0;
@@ -4376,6 +4548,7 @@
       preco: parseFloat(document.getElementById('prodPreco').value) || 0,
       obs: document.getElementById('prodObs').value.trim(),
       barcode: barcode,
+      localizacao: document.getElementById('prodLocalizacao').value.trim(),
     };
     if (prodEditId) {
       const idx = d.produtos.findIndex(x => x.id === prodEditId);
@@ -4551,6 +4724,7 @@
       return `<tr>
         <td>${p.nome}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${p.obs}</div>` : ''}</td>
         <td>${p.categoria}</td>
+        <td>${p.localizacao || '<span style="color:var(--text-muted)">—</span>'}</td>
         <td>${qtdControls}</td>
         <td style="cursor:pointer" onclick="editarCampoEstoque(${p.id}, 'min')" title="Editar Mínimo">${p.min} <span style="font-size:10px;opacity:0.5">✏️</span></td>
         <td style="cursor:${currentUser?.role === 'admin' ? 'pointer' : 'default'}" ${currentUser?.role === 'admin' ? `onclick="editarCampoEstoque(${p.id}, 'custo')" title="Editar Custo"` : ''}>
@@ -7417,11 +7591,16 @@
 
   // --- Categorias Dinâmicas do Estoque ---
   function carregarCategoriasEstoque() {
-    const defaultCats = ['Telas', 'Baterias', 'Conectores', 'Películas', 'Acessórios', 'Ferramentas', 'Outros'];
     const est = typeof getEstoque === 'function' ? getEstoque() : {produtos: []};
+    if (!est.categoriasMigrated) {
+      const defaultCats = ['Telas', 'Baterias', 'Conectores', 'Películas', 'Acessórios', 'Ferramentas', 'Outros'];
+      est.categorias = [...new Set([...defaultCats, ...(est.categorias || [])])];
+      est.categoriasMigrated = true;
+      if (typeof saveEstoque === 'function') saveEstoque(est);
+    }
     const customCats = est.categorias || [];
     const prodCats = (est.produtos || []).map(p => p.categoria).filter(c => c && c.trim() !== '');
-    const todasCats = [...new Set([...defaultCats, ...customCats, ...prodCats])];
+    const todasCats = [...new Set([...customCats, ...prodCats])];
     
     const selects = [document.getElementById('prodCategoria'), document.getElementById('filterCategoria')];
     selects.forEach(sel => {
@@ -9192,23 +9371,20 @@
 
   // --- Funções de Gerenciamento de Categorias ---
   function abrirModalGerenciarCategorias() {
-    const defaultCats = ['Telas', 'Baterias', 'Conectores', 'Películas', 'Acessórios', 'Ferramentas', 'Outros'];
     const est = typeof getEstoque === 'function' ? getEstoque() : {produtos: []};
     const customCats = est.categorias || [];
     const prodCats = (est.produtos || []).map(p => p.categoria).filter(c => c && c.trim() !== '');
     
-    // Todas as personalizadas únicas
-    const todasPersonalizadas = [...new Set([...customCats, ...prodCats])].filter(c => !defaultCats.includes(c));
+    // Todas as categorias únicas
+    const todasCategorias = [...new Set([...customCats, ...prodCats])];
 
     const container = document.getElementById('listaCategoriasGerenciar');
     let html = '';
     
-    html += '<h4 style="margin: 5px 0; color: var(--primary); font-size: 12px; text-transform: uppercase;">Personalizadas</h4>';
-    
-    if (todasPersonalizadas.length === 0) {
-      html += '<p style="font-size: 13px; color: #888; text-align: center; padding: 10px;">Nenhuma categoria personalizada criada.</p>';
+    if (todasCategorias.length === 0) {
+      html += '<p style="font-size: 13px; color: #888; text-align: center; padding: 10px;">Nenhuma categoria criada.</p>';
     } else {
-      todasPersonalizadas.sort().forEach(c => {
+      todasCategorias.sort().forEach(c => {
         html += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px; border-bottom: 1px solid var(--border);">
           <span>${c}</span>
           <div>
@@ -9218,14 +9394,6 @@
         </div>`;
       });
     }
-
-    html += '<h4 style="margin: 15px 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase;">Padrão do Sistema (Somente leitura)</h4>';
-    defaultCats.forEach(c => {
-      html += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px; border-bottom: 1px solid var(--border); color: #888;">
-        <span>${c}</span>
-        <span style="font-size: 11px;">(Padrão)</span>
-      </div>`;
-    });
 
     container.innerHTML = html;
     document.getElementById('modalCategorias').classList.add('open');
