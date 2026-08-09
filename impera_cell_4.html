@@ -2883,19 +2883,24 @@
   }
 
   function saveData(data) {
+    const cloudActive = _useSupabase && _cache._loaded;
+    if (cloudActive) {
+      _cache.ordens = JSON.parse(JSON.stringify(data));
+      _syncOrdens(data);
+    }
     try {
       localStorage.setItem(DB_KEY, JSON.stringify(data));
-      if (_useSupabase && _cache._loaded) {
-        _cache.ordens = JSON.parse(JSON.stringify(data));
-        _syncOrdens(data);
-      }
     } catch (e) {
-      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-        toast('❌ Erro: A memória do sistema está lotada! Você precisa exportar um backup, limpar os dados antigos ou usar o Supabase.', true);
+      const isQuota = e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED';
+      if (cloudActive) {
+        // Já foi enviado ao Supabase — a cópia local desatualizada não é crítica.
+        console.warn('Não foi possível atualizar a cópia local (provável cota do localStorage cheia). Os dados já foram salvos na nuvem.', e);
       } else {
-        toast('❌ Erro ao salvar OS.', true);
+        toast(isQuota
+          ? '❌ Erro: A memória do sistema está lotada! Você precisa exportar um backup, limpar os dados antigos ou usar o Supabase.'
+          : '❌ Erro ao salvar OS.', true);
+        throw e;
       }
-      throw e;
     }
     atualizarBackupInfo();
   }
@@ -4341,10 +4346,20 @@
     catch { return { produtos: [], nextId: 1 }; }
   }
   function saveEstoque(d) {
-    localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
+    const cloudActive = _useSupabase && _cache._loaded;
+    if (cloudActive) {
       _cache.estoque = JSON.parse(JSON.stringify(d));
       _syncEstoque(d);
+    }
+    try {
+      localStorage.setItem(ESTOQUE_KEY, JSON.stringify(d));
+    } catch (e) {
+      if (cloudActive) {
+        console.warn('Não foi possível atualizar a cópia local do estoque (cota do localStorage cheia). Os dados já foram salvos na nuvem.', e);
+      } else {
+        toast('❌ Erro ao salvar estoque: memória local lotada.', true);
+        throw e;
+      }
     }
   }
 
@@ -4842,10 +4857,20 @@
     catch { return { vendas: [], caixas: {}, nextId: 1 }; }
   }
   function saveVendas(d) {
-    localStorage.setItem(VENDAS_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
+    const cloudActive = _useSupabase && _cache._loaded;
+    if (cloudActive) {
       _cache.vendas = JSON.parse(JSON.stringify(d));
       _syncVendas(d);
+    }
+    try {
+      localStorage.setItem(VENDAS_KEY, JSON.stringify(d));
+    } catch (e) {
+      if (cloudActive) {
+        console.warn('Não foi possível atualizar a cópia local de vendas (cota do localStorage cheia). Os dados já foram salvos na nuvem.', e);
+      } else {
+        toast('❌ Erro ao salvar venda: memória local lotada.', true);
+        throw e;
+      }
     }
   }
 
@@ -5528,10 +5553,20 @@
     catch { return { lancamentos: [], nextId: 1 }; }
   }
   function saveFin(d) {
-    localStorage.setItem(FIN_KEY, JSON.stringify(d));
-    if (_useSupabase && _cache._loaded) {
+    const cloudActive = _useSupabase && _cache._loaded;
+    if (cloudActive) {
       _cache.financeiro = JSON.parse(JSON.stringify(d));
       _syncFinanceiro(d);
+    }
+    try {
+      localStorage.setItem(FIN_KEY, JSON.stringify(d));
+    } catch (e) {
+      if (cloudActive) {
+        console.warn('Não foi possível atualizar a cópia local do financeiro (cota do localStorage cheia). Os dados já foram salvos na nuvem.', e);
+      } else {
+        toast('❌ Erro ao salvar lançamento: memória local lotada.', true);
+        throw e;
+      }
     }
   }
 
