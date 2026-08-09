@@ -2516,11 +2516,13 @@
           if (estoqueExtrasConf[p.id]) {
             p.preco = estoqueExtrasConf[p.id].preco || 0;
             p.barcode = estoqueExtrasConf[p.id].barcode || '';
+            p.localizacao = estoqueExtrasConf[p.id].localizacao || '';
           }
           let localP = (localEstoque.produtos || []).find(x => x.id === p.id);
           if (localP) {
             if (!p.preco && localP.preco !== undefined) p.preco = localP.preco;
             if (!p.barcode && localP.barcode !== undefined) p.barcode = localP.barcode;
+            if (!p.localizacao && localP.localizacao !== undefined) p.localizacao = localP.localizacao;
           }
           return p;
         }),
@@ -2676,7 +2678,7 @@
     _sbSetSeq('estoque', data.nextId).catch(e => console.error('Sync seq estoque error:', e));
     const extras = {};
     data.produtos.forEach(p => {
-      if (p.preco || p.barcode) extras[p.id] = { preco: p.preco, barcode: p.barcode };
+      if (p.preco || p.barcode || p.localizacao) extras[p.id] = { preco: p.preco, barcode: p.barcode, localizacao: p.localizacao || '' };
     });
     if (Object.keys(extras).length > 0) _sbSetConfig('estoque_extras', extras).catch(e => console.error('Sync extras error:', e));
   }
@@ -2886,6 +2888,12 @@
   function saveData(data) {
     const cloudActive = _useSupabase && _cache._loaded;
     if (cloudActive) {
+      const qtdAnterior = (_cache.ordens.ordens || []).length;
+      if (qtdAnterior >= 3 && (!data.ordens || data.ordens.length === 0)) {
+        console.error('Bloqueado: tentativa de salvar OS vazia quando havia', qtdAnterior, 'ordens.');
+        toast('❌ Salvamento bloqueado: as Ordens de Serviço ficariam vazias (havia ' + qtdAnterior + '). Recarregue a página e tente novamente.', true);
+        return;
+      }
       _cache.ordens = JSON.parse(JSON.stringify(data));
       _syncOrdens(data);
     }
@@ -3090,6 +3098,16 @@
   // ── Helpers ──
   function today() {
     return new Date().toLocaleDateString('pt-BR');
+  }
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function isoToday() {
@@ -3645,10 +3663,10 @@
     tbody.innerHTML = os.map(o => `
       <tr>
         <td class="os-num" style="cursor:pointer" onclick="verOS(${o.id})">#${String(o.id).padStart(4,'0')}</td>
-        <td>${o.nomeCliente} ${o.feedbackCliente ? '<span title="Possui feedback do cliente!" style="cursor:help;">💬</span>' : ''}</td>
-        <td>${o.marca ? o.marca+' ' : ''}${o.modeloAparelho}</td>
-        <td>${o.tipoManutencao}</td>
-        <td>${o.tecnico || '—'}</td>
+        <td>${escapeHtml(o.nomeCliente)} ${o.feedbackCliente ? '<span title="Possui feedback do cliente!" style="cursor:help;">💬</span>' : ''}</td>
+        <td>${o.marca ? escapeHtml(o.marca)+' ' : ''}${escapeHtml(o.modeloAparelho)}</td>
+        <td>${escapeHtml(o.tipoManutencao)}</td>
+        <td>${escapeHtml(o.tecnico) || '—'}</td>
         <td>${formatMoney(o.valorServico)}</td>
         <td>${badgeHTML(o.status)}</td>
         <td>${o.dataEntrada}</td>
@@ -4014,25 +4032,25 @@
         <div>
           <div class="section-title">Cliente</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:14px">
-            <div><span style="color:var(--text-muted)">Nome:</span> <strong>${os.nomeCliente}</strong></div>
-            ${os.telefone ? `<div><span style="color:var(--text-muted)">Telefone:</span> ${os.telefone}</div>` : ''}
-            ${os.cpf ? `<div><span style="color:var(--text-muted)">CPF:</span> ${os.cpf}</div>` : ''}
-            ${os.rg ? `<div><span style="color:var(--text-muted)">RG:</span> ${os.rg}</div>` : ''}
-            ${os.endereco ? `<div><span style="color:var(--text-muted)">Endereço:</span> ${os.endereco}${os.bairro ? ', ' + os.bairro : ''}${os.cidade ? ' — ' + os.cidade : ''}</div>` : ''}
-            ${os.email ? `<div><span style="color:var(--text-muted)">E-mail:</span> ${os.email}</div>` : ''}
+            <div><span style="color:var(--text-muted)">Nome:</span> <strong>${escapeHtml(os.nomeCliente)}</strong></div>
+            ${os.telefone ? `<div><span style="color:var(--text-muted)">Telefone:</span> ${escapeHtml(os.telefone)}</div>` : ''}
+            ${os.cpf ? `<div><span style="color:var(--text-muted)">CPF:</span> ${escapeHtml(os.cpf)}</div>` : ''}
+            ${os.rg ? `<div><span style="color:var(--text-muted)">RG:</span> ${escapeHtml(os.rg)}</div>` : ''}
+            ${os.endereco ? `<div><span style="color:var(--text-muted)">Endereço:</span> ${escapeHtml(os.endereco)}${os.bairro ? ', ' + escapeHtml(os.bairro) : ''}${os.cidade ? ' — ' + escapeHtml(os.cidade) : ''}</div>` : ''}
+            ${os.email ? `<div><span style="color:var(--text-muted)">E-mail:</span> ${escapeHtml(os.email)}</div>` : ''}
           </div>
         </div>
         <div>
           <div class="section-title">Aparelho</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:14px">
-            <div><span style="color:var(--text-muted)">Modelo:</span> <strong>${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</strong> <button class="btn btn-sm btn-secondary" style="padding:1px 7px;font-size:11px;margin-left:4px" onclick="abrirEditarModeloOS(${os.id})">✏️ Editar</button></div>
-            ${os.imei ? `<div><span style="color:var(--text-muted)">IMEI:</span> ${os.imei}${os.imei2 ? ' / ' + os.imei2 : ''}</div>` : ''}
-            ${os.cor ? `<div><span style="color:var(--text-muted)">Cor:</span> ${os.cor}</div>` : ''}
+            <div><span style="color:var(--text-muted)">Modelo:</span> <strong>${os.marca ? escapeHtml(os.marca)+' ' : ''}${escapeHtml(os.modeloAparelho)}</strong> <button class="btn btn-sm btn-secondary" style="padding:1px 7px;font-size:11px;margin-left:4px" onclick="abrirEditarModeloOS(${os.id})">✏️ Editar</button></div>
+            ${os.imei ? `<div><span style="color:var(--text-muted)">IMEI:</span> ${escapeHtml(os.imei)}${os.imei2 ? ' / ' + escapeHtml(os.imei2) : ''}</div>` : ''}
+            ${os.cor ? `<div><span style="color:var(--text-muted)">Cor:</span> ${escapeHtml(os.cor)}</div>` : ''}
             <div style="display:flex;align-items:flex-start;gap:8px;margin-top:4px">
               <span style="color:var(--text-muted);flex-shrink:0">Senha:</span>
               ${senhaHTML}
             </div>
-            ${os.acessorios ? `<div><span style="color:var(--text-muted)">Acessórios:</span> ${os.acessorios}</div>` : ''}
+            ${os.acessorios ? `<div><span style="color:var(--text-muted)">Acessórios:</span> ${escapeHtml(os.acessorios)}</div>` : ''}
           </div>
         </div>
       </div>
@@ -4052,7 +4070,7 @@
         ${defMarcados.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
           ${defMarcados.map(d => `<span style="background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-size:12px">${d}</span>`).join('')}
         </div>` : ''}
-        ${os.defeitoRelatado ? `<div style="color:var(--text-muted);font-size:12px">${os.defeitoRelatado}</div>` : ''}
+        ${os.defeitoRelatado ? `<div style="color:var(--text-muted);font-size:12px">${escapeHtml(os.defeitoRelatado)}</div>` : ''}
       </div>` : ''}
 
       <div class="section-title">Check List de Entrada</div>
@@ -4063,8 +4081,8 @@
 
       <div class="section-title">Serviço</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:14px;margin-bottom:16px">
-        <div><span style="color:var(--text-muted)">Tipo:</span> ${os.tipoManutencao}</div>
-        <div><span style="color:var(--text-muted)">Técnico:</span> ${os.tecnico || '—'}</div>
+        <div><span style="color:var(--text-muted)">Tipo:</span> ${escapeHtml(os.tipoManutencao)}</div>
+        <div><span style="color:var(--text-muted)">Técnico:</span> ${escapeHtml(os.tecnico) || '—'}</div>
         <div><span style="color:var(--text-muted)">Valor:</span> <strong style="color:var(--gold)">${formatMoney(os.valorServico)}</strong></div>
         ${os.custoServico > 0 && currentUser?.role === 'admin' ? `<div><span style="color:var(--text-muted)">Custo:</span> <strong style="color:var(--danger)">− ${formatMoney(os.custoServico)}</strong></div>
         <div><span style="color:var(--text-muted)">Lucro:</span> <strong style="color:var(--success)">${formatMoney((parseFloat(os.valorServico)||0)-(parseFloat(os.custoServico)||0))}</strong></div>` : ''}
@@ -4072,7 +4090,7 @@
         <div><span style="color:var(--text-muted)">Previsão:</span> ${os.previsaoEntrega ? new Date(os.previsaoEntrega+'T12:00').toLocaleDateString('pt-BR') : '—'}</div>
         <div><span style="color:var(--text-muted)">Status:</span> ${badgeHTML(os.status)}</div>
       </div>
-      ${os.observacoes ? `<div style="margin-bottom:12px;font-size:14px"><span style="color:var(--text-muted)">Obs. internas:</span><br>${os.observacoes}</div>` : ''}
+      ${os.observacoes ? `<div style="margin-bottom:12px;font-size:14px"><span style="color:var(--text-muted)">Obs. internas:</span><br>${escapeHtml(os.observacoes)}</div>` : ''}
 
       ${os.fotosAntes && os.fotosAntes.length ? `
       <div class="section-title">Fotos ANTES do Serviço</div>
@@ -4113,13 +4131,13 @@
 
       <div class="section-title">Histórico</div>
       <div style="font-size:13px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px">
-        ${(os.historico || []).map(h => `<div>• ${h}</div>`).join('')}
+        ${(os.historico || []).map(h => `<div>• ${escapeHtml(h)}</div>`).join('')}
       </div>
 
       <div class="section-title" style="margin-top:16px;">Feedback do Cliente</div>
       ${os.feedbackCliente ? `
       <div style="font-size:14px; background:rgba(0,255,100,0.1); padding:12px; border-radius:6px; border:1px solid rgba(0,255,100,0.3); color:var(--success);">
-        <strong>"${os.feedbackCliente}"</strong>
+        <strong>"${escapeHtml(os.feedbackCliente)}"</strong>
       </div>
       ` : `
       <div style="font-size:13px; color:var(--text-muted); font-style:italic;">
@@ -4291,21 +4309,22 @@
     const tbody = document.getElementById('clientesBody');
     tbody.innerHTML = clientes.map(c => `
       <tr>
-        <td>${c.nome}</td>
-        <td>${c.tel || '—'}</td>
-        <td>${c.cpf || '—'}</td>
+        <td>${escapeHtml(c.nome)}</td>
+        <td>${escapeHtml(c.tel) || '—'}</td>
+        <td>${escapeHtml(c.cpf) || '—'}</td>
         <td><span style="color:var(--gold);font-weight:700">${c.count}</span></td>
-        <td>${c.ultima}</td>
+        <td>${escapeHtml(c.ultima)}</td>
         <td style="text-align:center">
-          <button class="btn btn-sm btn-danger" onclick="excluirCliente('${c.nome.replace(/'/g, "\\'")}')" title="Excluir Cliente e suas OS">🗑️</button>
+          <button class="btn btn-sm btn-danger" onclick="excluirCliente('${encodeURIComponent(c.nome)}')" title="Excluir Cliente e suas OS">🗑️</button>
         </td>
       </tr>
     `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">Nenhum cliente cadastrado.</td></tr>';
   }
 
-  window.excluirCliente = function(nome) {
+  window.excluirCliente = function(nomeCodificado) {
     try {
-      if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) { 
+      const nome = decodeURIComponent(nomeCodificado);
+      if (currentUser?.role !== 'admin' && (!currentUser?.perms || !currentUser.perms.deleteOS)) {
         toast('❌ Você não tem permissão para excluir registros.', true); 
         return; 
       }
@@ -4744,9 +4763,9 @@
           </div>`;
 
       return `<tr>
-        <td>${p.nome}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${p.obs}</div>` : ''}</td>
-        <td>${p.categoria}</td>
-        <td>${p.localizacao || '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>${escapeHtml(p.nome)}${p.obs ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.obs)}</div>` : ''}</td>
+        <td>${escapeHtml(p.categoria)}</td>
+        <td>${p.localizacao ? escapeHtml(p.localizacao) : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td>${qtdControls}</td>
         <td style="cursor:pointer" onclick="editarCampoEstoque(${p.id}, 'min')" title="Editar Mínimo">${p.min} <span style="font-size:10px;opacity:0.5">✏️</span></td>
         <td style="cursor:${currentUser?.role === 'admin' ? 'pointer' : 'default'}" ${currentUser?.role === 'admin' ? `onclick="editarCampoEstoque(${p.id}, 'custo')" title="Editar Custo"` : ''}>
@@ -4788,7 +4807,7 @@
     for (let i = 0; i < qtd; i++) {
       html += `
         <div style="display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; width: 38mm; height: 17.5mm; text-align: center; font-family: sans-serif; padding: 2px; border: 1px dashed #ddd; box-sizing: border-box; page-break-inside: avoid; overflow: hidden;">
-          <div style="display: block !important; font-weight: bold; font-size: 8px; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${p.nome}">${p.nome}</div>
+          <div style="display: block !important; font-weight: bold; font-size: 8px; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</div>
           <svg id="barcode-svg-${i}" style="display: block !important; max-width: 100%; height: 11px; margin: 0;"></svg>
           <div style="display: flex !important; justify-content: space-between !important; width: 85%; font-size: 7px; font-weight: bold; margin-top: 1px;">
             <span>${precoFormatado}</span>
@@ -4866,6 +4885,12 @@
   function saveVendas(d) {
     const cloudActive = _useSupabase && _cache._loaded;
     if (cloudActive) {
+      const qtdAnterior = (_cache.vendas.vendas || []).length;
+      if (qtdAnterior >= 3 && (!d.vendas || d.vendas.length === 0)) {
+        console.error('Bloqueado: tentativa de salvar vendas vazias quando havia', qtdAnterior, 'vendas.');
+        toast('❌ Salvamento bloqueado: as vendas ficariam vazias (havia ' + qtdAnterior + '). Recarregue a página e tente novamente.', true);
+        return;
+      }
       _cache.vendas = JSON.parse(JSON.stringify(d));
       _syncVendas(d);
     }
@@ -4922,7 +4947,7 @@
       return `<div data-idx="${i}" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .15s"
         onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''"
         onclick="vendaAutocompleteSelect(${p.id})">
-        <span style="font-size:14px">${p.nome} <span style="font-size:11px;color:var(--text-muted)">(${p.categoria})</span>${precoStr}</span>
+        <span style="font-size:14px">${escapeHtml(p.nome)} <span style="font-size:11px;color:var(--text-muted)">(${escapeHtml(p.categoria)})</span>${precoStr}</span>
         ${estoqueStr}
       </div>`;
     }).join('');
@@ -5434,11 +5459,11 @@
         return `
         <tr style="background-color: rgba(255,50,50,0.05);">
           <td>${v.hora || '—'}</td>
-          <td style="color:var(--danger); font-weight:600;">${v.descricao}</td>
+          <td style="color:var(--danger); font-weight:600;">${escapeHtml(v.descricao)}</td>
           <td>${v.quantidade}</td>
           <td><span style="color:var(--danger)">- ${formatMoney(v.preco)}</span></td>
-          <td><span style="font-size:12px;color:var(--text-muted)">${v.formaPagamento}</span></td>
-          <td><span style="font-size:12px;color:var(--text-muted)">${v.vendedor || '—'}</span></td>
+          <td><span style="font-size:12px;color:var(--text-muted)">${escapeHtml(v.formaPagamento)}</span></td>
+          <td><span style="font-size:12px;color:var(--text-muted)">${escapeHtml(v.vendedor) || '—'}</span></td>
           <td><strong style="color:var(--danger)">- ${formatMoney(v.total)}</strong></td>
           <td>
             <button class="btn btn-sm btn-danger" onclick="excluirVenda(${v.id})" title="Excluir Retirada">🗑</button>
@@ -5450,7 +5475,7 @@
       return `
       <tr>
         <td>${v.hora || '—'}</td>
-        <td>${v.descricao}</td>
+        <td>${escapeHtml(v.descricao)}</td>
         <td>${v.quantidade}</td>
         <td>${formatMoney(v.preco)}</td>
         <td><span style="font-size:12px;color:var(--text-muted)">${formaStr}</span></td>
@@ -5562,6 +5587,12 @@
   function saveFin(d) {
     const cloudActive = _useSupabase && _cache._loaded;
     if (cloudActive) {
+      const qtdAnterior = (_cache.financeiro.lancamentos || []).length;
+      if (qtdAnterior >= 3 && (!d.lancamentos || d.lancamentos.length === 0)) {
+        console.error('Bloqueado: tentativa de salvar financeiro vazio quando havia', qtdAnterior, 'lançamentos.');
+        toast('❌ Salvamento bloqueado: os lançamentos ficariam vazios (havia ' + qtdAnterior + '). Recarregue a página e tente novamente.', true);
+        return;
+      }
       _cache.financeiro = JSON.parse(JSON.stringify(d));
       _syncFinanceiro(d);
     }
@@ -6255,8 +6286,8 @@
       
       return `<tr>
         <td>${(l.status||'pago')==='pendente' && l.dataVencimento ? safeDt(l.dataVencimento) : dt}</td>
-        <td>${l.desc}${pgto}</td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
+        <td>${escapeHtml(l.desc)}${pgto}</td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${escapeHtml(l.categoria)}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'Entrada':'Saída'}</span></td>
         <td>${statusBadge}</td>
         <td>${colSaidaCusto}</td>
@@ -6293,8 +6324,8 @@
       
       return `<tr>
         <td style="${isAtrasado ? 'color:var(--danger)' : ''}">${dt}</td>
-        <td>${l.desc}${pgto}</td>
-        <td><span style="font-size:12px;color:var(--text-muted)">${l.categoria}</span></td>
+        <td>${escapeHtml(l.desc)}${pgto}</td>
+        <td><span style="font-size:12px;color:var(--text-muted)">${escapeHtml(l.categoria)}</span></td>
         <td><span class="badge ${l.tipo==='entrada'?'badge-concluido':'badge-cancelado'}">${l.tipo==='entrada'?'A Receber':'A Pagar'}</span></td>
         <td>${statusBadge}</td>
         <td>${valorStr}</td>
@@ -7720,7 +7751,7 @@
         if (isTrocaTela) {
           garantiaHtml += `
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
-              <p><strong>Olá ${os.nomeCliente}! Seu aparelho teve a tela substituída e já está pronto para uso, pode vir buscá-lo.</strong></p>
+              <p><strong>Olá ${escapeHtml(os.nomeCliente)}! Seu aparelho teve a tela substituída e já está pronto para uso, pode vir buscá-lo.</strong></p>
               <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
               <p>✅ A garantia da tela é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
               <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
@@ -7739,7 +7770,7 @@
         if (isTrocaBateria) {
           garantiaHtml += `
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
-              <p><strong>Olá ${os.nomeCliente}! A bateria do seu aparelho foi substituída e o serviço foi concluído com sucesso, pode vir buscá-lo.</strong></p>
+              <p><strong>Olá ${escapeHtml(os.nomeCliente)}! A bateria do seu aparelho foi substituída e o serviço foi concluído com sucesso, pode vir buscá-lo.</strong></p>
               <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
               <p>✅ A garantia da bateria é de 90 dias, cobrindo apenas defeitos de fabricação ou falhas de funcionamento da peça.</p>
               <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
@@ -7763,7 +7794,7 @@
         if (isTrocaConector) {
           garantiaHtml += `
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: rgba(0, 150, 255, 0.1); border: 1px solid rgba(0, 150, 255, 0.3); text-align: left; font-size:13px; color:var(--text); line-height: 1.5;">
-              <p><strong>Olá ${os.nomeCliente}! O conector de carga do seu aparelho foi substituído e o serviço foi realizado com sucesso, pode vir buscá-lo.</strong></p>
+              <p><strong>Olá ${escapeHtml(os.nomeCliente)}! O conector de carga do seu aparelho foi substituído e o serviço foi realizado com sucesso, pode vir buscá-lo.</strong></p>
               <p style="margin-top:12px;"><strong>Informações sobre a garantia:</strong></p>
               <p>✅ A garantia do conector de carga é de 30 dias, cobrindo apenas defeitos de fabricação ou falhas no serviço realizado.</p>
               <p style="margin-top:12px;"><strong>A garantia não cobre:</strong></p>
@@ -7793,11 +7824,11 @@
           <div class="card" style="width: 100%; max-width: 400px; padding: 20px; text-align: center;">
             <h2 style="color:var(--text); margin-bottom: 8px;">Acompanhamento de OS</h2>
             <h3 style="color:var(--accent); margin-bottom: 24px;">OS #${String(os.id).padStart(4,'0')}</h3>
-            <p style="color:var(--text-muted); margin-bottom: 4px;">Cliente: ${os.nomeCliente}</p>
-            <p style="color:var(--text-muted); margin-bottom: 4px;">Aparelho: ${os.marca ? os.marca+' ' : ''}${os.modeloAparelho}</p>
-            <p style="color:var(--text-muted); margin-bottom: 4px;">Serviço: ${os.servicoRealizado || os.tipoManutencao || 'Não especificado'}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Cliente: ${escapeHtml(os.nomeCliente)}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Aparelho: ${os.marca ? escapeHtml(os.marca)+' ' : ''}${escapeHtml(os.modeloAparelho)}</p>
+            <p style="color:var(--text-muted); margin-bottom: 4px;">Serviço: ${escapeHtml(os.servicoRealizado || os.tipoManutencao) || 'Não especificado'}</p>
             <p style="color:var(--text-muted); margin-bottom: 4px;">Valor do Serviço: <strong style="color:var(--gold)">${formatMoney(os.valorServico || 0)}</strong></p>
-            ${os.pago ? `<p style="color:var(--success); margin-bottom: 8px; font-weight:bold;">✅ PAGO ${os.formaPagamento ? '<span style="font-size:12px; font-weight:normal;">(' + os.formaPagamento + ')</span>' : ''}</p>` : ''}
+            ${os.pago ? `<p style="color:var(--success); margin-bottom: 8px; font-weight:bold;">✅ PAGO ${os.formaPagamento ? '<span style="font-size:12px; font-weight:normal;">(' + escapeHtml(os.formaPagamento) + ')</span>' : ''}</p>` : ''}
             
             <div style="margin-top:24px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);">
               <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Status Atual</div>
@@ -7844,7 +7875,7 @@
 
             <div style="margin-top:24px; text-align: left; font-size:13px; color:var(--text-muted);">
               <div style="margin-bottom: 8px; font-weight: bold; color:var(--text);">Histórico</div>
-              ${(os.historico || []).map(h => `<div style="margin-bottom:4px;">• ${h}</div>`).join('')}
+              ${(os.historico || []).map(h => `<div style="margin-bottom:4px;">• ${escapeHtml(h)}</div>`).join('')}
             </div>
 
             <div id="feedbackArea" style="margin-top:32px; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); text-align: left;">
