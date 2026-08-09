@@ -2028,14 +2028,12 @@
 
   async function _sbFetch(table) {
     if (!_supabase) return [];
-    try {
-      const { data, error } = await _supabase.from(table).select('*');
-      if (error) { console.error('Supabase fetch error (' + table + '):', error); return []; }
-      return data || [];
-    } catch (e) {
-      console.error('Fetch exception (' + table + '):', e);
-      return [];
+    const { data, error } = await _supabase.from(table).select('*');
+    if (error) {
+      console.error('Supabase fetch error (' + table + '):', error);
+      throw error;
     }
+    return data || [];
   }
 
   async function _sbUpsert(table, rows) {
@@ -2538,6 +2536,9 @@
     } catch (err) {
       console.error('❌ [_initSupabase] Erro crítico ao carregar Supabase:', err);
       console.log('⚠️ [_initSupabase] Usando fallback para localStorage');
+      if (typeof toast === 'function') {
+        toast('⚠️ Não foi possível carregar os dados da nuvem agora. Usando cópia local temporariamente — evite cadastrar itens até recarregar a página com conexão estável.', true);
+      }
     } finally {
       console.log('🔍 [_initSupabase] Escondendo loader...');
       const loader = document.getElementById('appLoading');
@@ -4348,6 +4349,12 @@
   function saveEstoque(d) {
     const cloudActive = _useSupabase && _cache._loaded;
     if (cloudActive) {
+      const qtdAnterior = (_cache.estoque.produtos || []).length;
+      if (qtdAnterior >= 3 && (!d.produtos || d.produtos.length === 0)) {
+        console.error('Bloqueado: tentativa de salvar estoque vazio quando havia', qtdAnterior, 'produtos.');
+        toast('❌ Salvamento bloqueado: o estoque ficaria vazio (tinha ' + qtdAnterior + ' produtos). Recarregue a página e tente novamente.', true);
+        return;
+      }
       _cache.estoque = JSON.parse(JSON.stringify(d));
       _syncEstoque(d);
     }
