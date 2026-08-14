@@ -7737,16 +7737,32 @@
       document.getElementById('trackingOverlay').style.display = 'flex';
       const loader = document.getElementById('appLoading');
       if(loader) loader.style.display = 'flex';
-      await _initSupabase();
+
+      // Acompanhamento público: busca apenas a OS solicitada em vez de
+      // carregar toda a base (ordens, lançamentos, vendas, estoque etc.)
+      // via _initSupabase(), que deixava esta tela extremamente lenta.
+      let os = null;
+      if (_useSupabase) {
+        try {
+          const { data: row, error } = await _supabase.from('ordens').select('*').eq('id', Number(trackId)).maybeSingle();
+          if (error) throw error;
+          os = row ? _rowToOs(row) : null;
+        } catch (e) {
+          console.error('Erro ao carregar OS para acompanhamento:', e);
+        }
+      } else {
+        const data = getData();
+        os = data.ordens.find(o => o.id === Number(trackId));
+      }
       if(loader) loader.style.display = 'none';
-      const data = getData();
-      const os = data.ordens.find(o => o.id === Number(trackId));
+
+      let garantiaHtml = '';
+      if (os) {
       const isTrocaTela = (os.tipoManutencao || '').toLowerCase().includes('tela') || (os.servicoRealizado || '').toLowerCase().includes('tela');
       const isTrocaBateria = (os.tipoManutencao || '').toLowerCase().includes('bateria') || (os.servicoRealizado || '').toLowerCase().includes('bateria');
       const isTrocaConector = (os.tipoManutencao || '').toLowerCase().includes('conector') || (os.servicoRealizado || '').toLowerCase().includes('conector');
       const isConcluidoOuEntregue = ['Concluído', 'Entregue'].includes(os.status);
-      
-      let garantiaHtml = '';
+
       if (isConcluidoOuEntregue) {
         if (isTrocaTela) {
           garantiaHtml += `
@@ -7817,6 +7833,7 @@
             </div>
           `;
         }
+      }
       }
 
       if(os) {
