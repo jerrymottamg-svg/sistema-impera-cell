@@ -1142,7 +1142,7 @@
             <th onclick="sortEstoque('preco')" style="cursor:pointer; user-select:none;">Preço Venda ↕️</th>
             <th>Lucro</th>
             <th onclick="sortEstoque('barcode')" style="cursor:pointer; user-select:none;">Cód. Barras ↕️</th>
-            <th>Status</th>
+            <th onclick="sortEstoque('status')" style="cursor:pointer; user-select:none;">Status ↕️</th>
             <th>Ações</th>
           </tr></thead>
           <tbody id="estoqueBody"></tbody>
@@ -4669,6 +4669,12 @@
   let estoqueSortCol = 'nome';
   let estoqueSortDir = 1;
 
+  function _estoqueStatusRank(p) {
+    if (p.qtd <= 0) return 0; // Crítico
+    if (p.qtd <= p.min) return 1; // Baixo
+    return 2; // OK
+  }
+
   function sortEstoque(col) {
     if (estoqueSortCol === col) {
       estoqueSortDir *= -1;
@@ -4688,10 +4694,16 @@
     if (cat) lista = lista.filter(p => p.categoria === cat);
 
     lista.sort((a, b) => {
-      let valA = a[estoqueSortCol] !== undefined ? a[estoqueSortCol] : '';
-      let valB = b[estoqueSortCol] !== undefined ? b[estoqueSortCol] : '';
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      let valA, valB;
+      if (estoqueSortCol === 'status') {
+        valA = _estoqueStatusRank(a);
+        valB = _estoqueStatusRank(b);
+      } else {
+        valA = a[estoqueSortCol] !== undefined ? a[estoqueSortCol] : '';
+        valB = b[estoqueSortCol] !== undefined ? b[estoqueSortCol] : '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+      }
       if (valA < valB) return -1 * estoqueSortDir;
       if (valA > valB) return 1 * estoqueSortDir;
       return 0;
